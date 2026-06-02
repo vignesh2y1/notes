@@ -67,28 +67,44 @@ When a map grows too crowded, Go resizes it to keep lookups fast ($O(1)$).
 Allocating a new double-sized bucket array and copying all elements at once would cause a massive latency spike (a "stop-the-world" style delay). To prevent this, **Go resizes maps incrementally**. The lifecycle follows a state machine:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> NormalOp: "map in use"
-    NormalOp --> GrowthTriggered: "load > 6.5 || overflow threshold"
-    GrowthTriggered --> AllocBuckets: "grow 2x or same-size"
-    AllocBuckets --> Evacuating: "buckets -> new, oldbuckets -> old"
-    state Evacuating {
-        [*] --> Idle
-        Idle --> EvacOne: "write/delete triggers"
-        EvacOne --> Incr: "nevacuate++"
-        Incr --> Idle: "next bucket"
-        Idle --> Done: "all buckets moved"
-    }
-    Evacuating --> NormalOp: "oldbuckets = nil, complete"
+flowchart TD
+    %% Main Flow Nodes
+    Start([Start]) --> NormalOp["Normal Operation <br> (Map in use)"]
+    NormalOp -->|"Load factor > 6.5 or too many overflow buckets"| GrowthTriggered{"Growth Triggered"}
+    GrowthTriggered -->|"Allocate 2x buckets (or same-size)"| AllocBuckets["Allocating Buckets <br> (buckets -> new, oldbuckets -> old)"]
+    AllocBuckets --> Evacuating[["Evacuating State"]]
 
-    note right of Evacuating
-        Reads check oldbuckets first
-        if bucket not yet moved
-    end note
-    note right of NormalOp
-        Reads & writes
-        use buckets only
-    end note
+    %% Evacuation Subgraph (Nested Flow representation)
+    subgraph EvacuationCycle ["Evacuation Cycle (Incremental, bucket-by-bucket)"]
+        direction TB
+        EvacIdle["Idle State"] -->|"Write or delete trigger"| EvacOne["Evacuate One Bucket"]
+        EvacOne -->|"nevacuate++"| EvacIncr["Increment (Point to next bucket)"]
+        EvacIncr --> EvacIdle
+        EvacIdle -->|"All buckets moved"| EvacDone["Done"]
+    end
+
+    Evacuating --> EvacuationCycle
+    EvacDone -->|"oldbuckets = nil (Complete)"| NormalOp
+
+    %% Annotations
+    Note1["📝 Read/Write Flow:<br>Reads check oldbuckets first if not evacuated yet.<br>Writes trigger bucket evacuation."]
+    Note2["📝 Steady State:<br>Reads & writes use buckets only."]
+
+    EvacuationCycle -.-> Note1
+    NormalOp -.-> Note2
+
+    %% Premium styling using standard HSL/Hex compatible colors
+    style NormalOp fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px,color:#01579b
+    style GrowthTriggered fill:#ffebee,stroke:#ef5350,stroke-width:2px,color:#b71c1c
+    style AllocBuckets fill:#fff8e1,stroke:#ffb300,stroke-width:2px,color:#f57f17
+    style Evacuating fill:#ede7f6,stroke:#7e57c2,stroke-width:2px,color:#4a148c
+    style EvacuationCycle fill:#fafafa,stroke:#9e9e9e,stroke-width:1px,stroke-dasharray: 5 5
+    style EvacIdle fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px,color:#1b5e20
+    style EvacOne fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px,color:#1b5e20
+    style EvacIncr fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px,color:#1b5e20
+    style EvacDone fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px,color:#1b5e20
+    style Note1 fill:#fffde7,stroke:#fff176,stroke-width:1px,color:#f57f17
+    style Note2 fill:#fffde7,stroke:#fff176,stroke-width:1px,color:#f57f17
 ```
 
 * During growth, Go allocates a new bucket array (`buckets`) and moves the old pointer to `oldbuckets`.
