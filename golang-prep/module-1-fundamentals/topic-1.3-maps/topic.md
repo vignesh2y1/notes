@@ -68,21 +68,27 @@ Allocating a new double-sized bucket array and copying all elements at once woul
 
 ```mermaid
 stateDiagram-v2
-    [*] --> NormalOp: map in use
-    NormalOp --> GrowthTriggered: load > 6.5 || overflow threshold
-    GrowthTriggered --> AllocBuckets: grow 2× or same-size
-    AllocBuckets --> Evacuating: buckets→new\noldbuckets→old
+    [*] --> NormalOp: "map in use"
+    NormalOp --> GrowthTriggered: "load > 6.5 || overflow threshold"
+    GrowthTriggered --> AllocBuckets: "grow 2x or same-size"
+    AllocBuckets --> Evacuating: "buckets -> new, oldbuckets -> old"
     state Evacuating {
         [*] --> Idle
-        Idle --> EvacOne: write/delete triggers
-        EvacOne --> Incr: nevacuate++
-        Incr --> Idle: next bucket
-        Idle --> Done: all buckets moved
+        Idle --> EvacOne: "write/delete triggers"
+        EvacOne --> Incr: "nevacuate++"
+        Incr --> Idle: "next bucket"
+        Idle --> Done: "all buckets moved"
     }
-    Evacuating --> NormalOp: oldbuckets=nil, complete
+    Evacuating --> NormalOp: "oldbuckets = nil, complete"
 
-    note right of Evacuating : Reads check oldbuckets first\nif bucket not yet moved
-    note right of NormalOp : Reads & writes\nuse buckets only
+    note right of Evacuating
+        Reads check oldbuckets first
+        if bucket not yet moved
+    end note
+    note right of NormalOp
+        Reads & writes
+        use buckets only
+    end note
 ```
 
 * During growth, Go allocates a new bucket array (`buckets`) and moves the old pointer to `oldbuckets`.
