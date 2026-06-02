@@ -64,10 +64,39 @@ When a map grows too crowded, Go resizes it to keep lookups fast ($O(1)$).
 2. **Too Many Overflow Buckets:** If there are too many overflow buckets, Go triggers a **same-size growth** to clean up the memory layout and consolidate sparse buckets.
 
 #### Incremental Evacuation:
-Allocating a new double-sized bucket array and copying all elements at once would cause a massive latency spike (a "stop-the-world" style delay). To prevent this, **Go resizes maps incrementally**.
+Allocating a new double-sized bucket array and copying all elements at once would cause a massive latency spike (a "stop-the-world" style delay). To prevent this, **Go resizes maps incrementally**. The lifecycle follows a state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> NormalOp: map in use
+    NormalOp --> GrowthTriggered: load > 6.5 || overflow threshold
+    GrowthTriggered --> AllocBuckets: grow 2× or same-size
+    AllocBuckets --> Evacuating: buckets→new\noldbuckets→old
+    state Evacuating {
+        [*] --> Idle
+        Idle --> EvacOne: write/delete triggers
+        EvacOne --> Incr: nevacuate++
+        Incr --> Idle: next bucket
+        Idle --> Done: all buckets moved
+    }
+    Evacuating --> NormalOp: oldbuckets=nil, complete
+
+    note right of Evacuating : Reads check oldbuckets first\nif bucket not yet moved
+    note right of NormalOp : Reads & writes\nuse buckets only
+```
+
 * During growth, Go allocates a new bucket array (`buckets`) and moves the old pointer to `oldbuckets`.
 * Evacuation occurs one bucket at a time, triggered dynamically whenever a write (`map[key] = val`) or delete (`delete(m, key)`) is executed on the map.
-* Reads will check `oldbuckets` if the target bucket has not yet been evacuated.
+* During evacuation, the read path handles the two-phase state:
+
+```mermaid
+flowchart LR
+    Read[Read map[key]] --> Evac{Evacuated?}
+    Evac -->|Yes| Direct[Read from buckets]
+    Evac -->|No| Fallback[Read from oldbuckets]
+    Direct --> Ret[Return value]
+    Fallback --> Ret
+```
 
 ---
 
