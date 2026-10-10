@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surya 100MW Solar IPP — CPM Engine Simulator</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --border-bright: #484f58;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-dim: #6e7681;
+      --accent-blue: #58a6ff;
+      --accent-blue-bg: rgba(88, 166, 255, 0.12);
+      --critical-red: #f85149;
+      --critical-red-bg: rgba(248, 81, 73, 0.15);
+      --safe-green: #3fb950;
+      --safe-green-bg: rgba(63, 185, 80, 0.15);
+      --warning-yellow: #e3b341;
+      --warning-yellow-bg: rgba(227, 179, 65, 0.15);
+      --purple-accent: #bc8cff;
+      --purple-bg: rgba(188, 140, 255, 0.12);
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Container */
+    .app-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(180deg, #161b22 0%, #11151c 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-titles h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffffff;
+    }
+
+    .badge-p6 {
+      background: var(--accent-blue-bg);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-top: 4px;
+    }
+
+    .project-kpis {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .kpi-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      min-width: 110px;
+    }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi-val {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-top: 2px;
+    }
+
+    .kpi-val.critical {
+      color: var(--critical-red);
+    }
+    .kpi-val.safe {
+      color: var(--safe-green);
+    }
+
+    /* Primary Action Ribbon */
+    .action-ribbon {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .step-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .btn-step1 {
+      background: #1f3a5f;
+      border-color: #388bfd;
+      color: #79c0ff;
+    }
+    .btn-step1:hover {
+      background: #234b7d;
+      box-shadow: 0 0 10px rgba(56, 139, 253, 0.35);
+    }
+
+    .btn-step2 {
+      background: #4d3800;
+      border-color: #d29922;
+      color: #e3b341;
+    }
+    .btn-step2:hover {
+      background: #634800;
+      box-shadow: 0 0 10px rgba(210, 153, 34, 0.35);
+    }
+
+    .btn-step3 {
+      background: #4c131a;
+      border-color: #f85149;
+      color: #ff7b72;
+    }
+    .btn-step3:hover {
+      background: #651a22;
+      box-shadow: 0 0 12px rgba(248, 81, 73, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: var(--border-bright);
+    }
+
+    .btn-instant {
+      background: #2b1f4d;
+      border-color: #bc8cff;
+      color: #d2a8ff;
+    }
+    .btn-instant:hover {
+      background: #3b2b6b;
+      box-shadow: 0 0 10px rgba(188, 140, 255, 0.35);
+    }
+
+    .scenario-picker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .scenario-picker label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    select, input[type="number"] {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-family: var(--font-main);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px var(--accent-blue-bg);
+    }
+
+    /* Main Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1080px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      background: var(--bg-tertiary);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    /* Parameter Sliders */
+    .activity-slider-item {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      transition: var(--transition);
+    }
+
+    .activity-slider-item:hover {
+      border-color: var(--border-bright);
+    }
+
+    .activity-slider-item.critical-pulse {
+      border-left: 4px solid var(--critical-red);
+    }
+    .activity-slider-item.safe-pulse {
+      border-left: 4px solid var(--safe-green);
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .slider-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .task-code {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: var(--accent-blue);
+    }
+
+    .slider-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider-controls input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent-blue);
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .slider-controls input[type="number"] {
+      width: 52px;
+      text-align: center;
+      padding: 3px 6px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .lag-control-box {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      color: var(--warning-yellow);
+    }
+
+    /* Center Panels */
+    .center-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Diagram Canvas */
+    .diagram-container {
+      position: relative;
+      width: 100%;
+      height: 440px;
+      background: #0d1117;
+      background-image: 
+        radial-gradient(rgba(48, 54, 61, 0.4) 1px, transparent 1px);
+      background-size: 20px 20px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    #networkSvg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Status Banner / Explanation Bar */
+    .status-indicator-bar {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.85rem;
+    }
+
+    .status-step-pill {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: var(--accent-blue-bg);
+      color: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status-msg {
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      flex: 1;
+    }
+
+    /* Gantt Chart */
+    .gantt-wrapper {
+      overflow-x: auto;
+      padding: 4px 0;
+    }
+
+    .gantt-chart {
+      min-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gantt-timeline-header {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .gantt-days-axis {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      align-items: center;
+      height: 38px;
+      border-radius: 6px;
+      background: rgba(33, 38, 45, 0.4);
+      border: 1px solid transparent;
+      transition: var(--transition);
+    }
+
+    .gantt-row:hover {
+      background: rgba(33, 38, 45, 0.9);
+      border-color: var(--border-color);
+    }
+
+    .gantt-row-label {
+      padding: 0 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gantt-track {
+      position: relative;
+      height: 100%;
+      width: 100%;
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+    }
+
+    .gantt-grid-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(48, 54, 61, 0.35);
+      pointer-events: none;
+    }
+
+    .gantt-bar-early {
+      position: absolute;
+      height: 20px;
+      border-radius: 4px;
+      background: var(--safe-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      transition: var(--transition);
+      z-index: 2;
+    }
+
+    .gantt-bar-early.critical {
+      background: var(--critical-red);
+      box-shadow: 0 0 10px rgba(248, 81, 73, 0.5);
+    }
+
+    .gantt-bar-float {
+      position: absolute;
+      height: 12px;
+      border-radius: 3px;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(227, 179, 65, 0.3),
+        rgba(227, 179, 65, 0.3) 6px,
+        rgba(227, 179, 65, 0.1) 6px,
+        rgba(227, 179, 65, 0.1) 12px
+      );
+      border: 1px dashed var(--warning-yellow);
+      z-index: 1;
+      transition: var(--transition);
+    }
+
+    .gantt-curing-lag {
+      position: absolute;
+      height: 16px;
+      border-radius: 3px;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(188, 140, 255, 0.35),
+        rgba(188, 140, 255, 0.35) 6px,
+        rgba(188, 140, 255, 0.15) 6px,
+        rgba(188, 140, 255, 0.15) 12px
+      );
+      border: 1px solid var(--purple-accent);
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #e2c5ff;
+      font-family: var(--font-mono);
+    }
+
+    /* Data Table */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      font-family: var(--font-mono);
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+      font-family: var(--font-mono);
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background: rgba(88, 166, 255, 0.05);
+    }
+
+    tr.critical-row td {
+      background: rgba(248, 81, 73, 0.05);
+    }
+    tr.critical-row:hover td {
+      background: rgba(248, 81, 73, 0.12);
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-status.critical {
+      background: var(--critical-red-bg);
+      color: var(--critical-red);
+      border: 1px solid var(--critical-red);
+    }
+
+    .badge-status.safe {
+      background: var(--safe-green-bg);
+      color: var(--safe-green);
+      border: 1px solid var(--safe-green);
+    }
+
+    /* Math Execution Log */
+    .log-panel {
+      background: #090d13;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      max-height: 170px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-entry {
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .log-entry.active-step {
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .log-entry.critical-log {
+      color: var(--critical-red);
+    }
+
+    .log-entry.safe-log {
+      color: var(--safe-green);
+    }
+
+    .log-entry span.hl {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    /* Diagram Nodes styling inside SVG */
+    .node-box {
+      cursor: pointer;
+      transition: filter 0.2s ease, transform 0.2s ease;
+    }
+    .node-box:hover {
+      filter: drop-shadow(0 4px 12px rgba(88, 166, 255, 0.3));
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Header -->
+    <header>
+      <div class="header-titles">
+        <h1>
+          <span>Surya 100MW Solar IPP</span>
+          <span class="badge-p6">CPM Engine Simulator</span>
+        </h1>
+        <p>Interactive 5-Activity Scheduling Engine | Forward/Backward Pass, Float Propagation & Critical Path Analysis</p>
+      </div>
+
+      <div class="project-kpis">
+        <div class="kpi-card">
+          <span class="kpi-label">Project Finish</span>
+          <span class="kpi-val" id="kpiFinish">17 Days</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Critical Path</span>
+          <span class="kpi-val critical" id="kpiCriticalPath">A → B → C → E</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Substation Float</span>
+          <span class="kpi-val safe" id="kpiFloatD">9 Days</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Engine State</span>
+          <span class="kpi-val" id="kpiEngineState" style="color: var(--purple-accent); font-size: 0.95rem;">Evaluated</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Action Ribbon -->
+    <div class="action-ribbon">
+      <div class="step-buttons">
+        <button class="btn btn-step1" id="btnStep1" onclick="runForwardPass()">
+          <span>▶ Step 1: Run Forward Pass</span>
+        </button>
+        <button class="btn btn-step2" id="btnStep2" onclick="runBackwardPass()">
+          <span>◀ Step 2: Run Backward Pass</span>
+        </button>
+        <button class="btn btn-step3" id="btnStep3" onclick="runFloatPass()">
+          <span>⭐ Step 3: Compute Float & Critical Path</span>
+        </button>
+        <button class="btn btn-instant" id="btnInstant" onclick="calculateInstant()">
+          <span>⚡ Instant Calculate All</span>
+        </button>
+        <button class="btn btn-secondary" id="btnReset" onclick="resetToDefaults()">
+          <span>↺ Reset to Default</span>
+        </button>
+      </div>
+
+      <div class="scenario-picker">
+        <label for="scenarioSelect">Load Preset Scenario:</label>
+        <select id="scenarioSelect" onchange="loadScenario(this.value)">
+          <option value="baseline">Baseline (Inverter Block 04 - 17d, D safe)</option>
+          <option value="audit_delayed">Substation Audit Delayed (D = 11d, Dual Critical)</option>
+          <option value="critical_shift">Audit Blowout (D = 14d, Critical Path flips to A-D-E)</option>
+          <option value="foundation_fasttrack">Fast-Track Foundation (B = 3d, Lag = 1d)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Live Execution Status Bar -->
+    <div class="status-indicator-bar">
+      <div class="status-step-pill" id="stepPill">Step 3 Complete</div>
+      <div class="status-msg" id="statusMessage">
+        Critical Path evaluated: Activities [A, B, C, E] have Total Float = 0d (RED). Substation Audit [D] has 9d Total Float (GREEN).
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+
+      <!-- Left Column: Parameters & Sliders -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+            </svg>
+            Activity Parameters (Days)
+          </span>
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">5 Activities</span>
+        </div>
+        <div class="card-body">
+
+          <!-- Activity A -->
+          <div class="activity-slider-item" id="sliderCardA">
+            <div class="slider-header">
+              <span class="slider-title">
+                <span class="task-code">ACT-A</span> Site Grading
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Root Task</span>
+            </div>
+            <div class="slider-controls">
+              <input type="range" id="durA" min="1" max="15" value="3" oninput="updateDuration('A', this.value)">
+              <input type="number" id="numA" min="1" max="15" value="3" onchange="updateDuration('A', this.value)">
+            </div>
+          </div>
+
+          <!-- Activity B -->
+          <div class="activity-slider-item" id="sliderCardB">
+            <div class="slider-header">
+              <span class="slider-title">
+                <span class="task-code">ACT-B</span> Inverter Foundation & Rebar
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Pred: A (FS)</span>
+            </div>
+            <div class="slider-controls">
+              <input type="range" id="durB" min="1" max="15" value="5" oninput="updateDuration('B', this.value)">
+              <input type="number" id="numB" min="1" max="15" value="5" onchange="updateDuration('B', this.value)">
+            </div>
+            <!-- Curing Lag Control -->
+            <div class="lag-control-box">
+              <span>⏳ Concrete Curing Lag (B → C):</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <input type="number" id="curingLagInput" min="0" max="10" value="2" style="width: 44px; color: var(--warning-yellow);" onchange="updateCuringLag(this.value)">
+                <span>days</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity C -->
+          <div class="activity-slider-item" id="sliderCardC">
+            <div class="slider-header">
+              <span class="slider-title">
+                <span class="task-code">ACT-C</span> Inverter Erection
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Pred: B (FS + Lag)</span>
+            </div>
+            <div class="slider-controls">
+              <input type="range" id="durC" min="1" max="15" value="4" oninput="updateDuration('C', this.value)">
+              <input type="number" id="numC" min="1" max="15" value="4" onchange="updateDuration('C', this.value)">
+            </div>
+          </div>
+
+          <!-- Activity D -->
+          <div class="activity-slider-item" id="sliderCardD">
+            <div class="slider-header">
+              <span class="slider-title">
+                <span class="task-code">ACT-D</span> Substation Quality Audit
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Pred: A (FS)</span>
+            </div>
+            <div class="slider-controls">
+              <input type="range" id="durD" min="1" max="20" value="2" oninput="updateDuration('D', this.value)">
+              <input type="number" id="numD" min="1" max="20" value="2" onchange="updateDuration('D', this.value)">
+            </div>
+          </div>
+
+          <!-- Activity E -->
+          <div class="activity-slider-item" id="sliderCardE">
+            <div class="slider-header">
+              <span class="slider-title">
+                <span class="task-code">ACT-E</span> Final Commissioning
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Pred: C & D (FS)</span>
+            </div>
+            <div class="slider-controls">
+              <input type="range" id="durE" min="1" max="15" value="3" oninput="updateDuration('E', this.value)">
+              <input type="number" id="numE" min="1" max="15" value="3" onchange="updateDuration('E', this.value)">
+            </div>
+          </div>
+
+          <!-- P6 Insights Box -->
+          <div style="background: rgba(88, 166, 255, 0.06); border: 1px solid var(--accent-blue-bg); border-radius: 8px; padding: 12px; margin-top: 14px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--accent-blue); margin-bottom: 4px;">
+              💡 Engineering Axiom
+            </div>
+            <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.45;">
+              In Oracle Primavera P6, concrete curing is modeled as a Finish-to-Start lag ($\text{FS} + \text{Lag}$) or continuous calendar. If Substation Audit duration increases past 11d, it absorbs all float and becomes driving.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Column: Network Diagram & Gantt & Math Log -->
+      <div class="center-column">
+
+        <!-- Network Diagram Card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.672 8.28a2.25 2.25 0 1 1 3.156-3.156l2.368 2.368a2.25 2.25 0 1 1-1.06 1.06l-2.368-2.368a2.247 2.247 0 0 1-2.096 2.096Z"/>
+              </svg>
+              Activity-On-Node (AON) Network Diagram & Standard P6 6-Cell Boxes
+            </span>
+            <div style="display: flex; gap: 12px; font-size: 0.74rem; align-items: center;">
+              <span style="display: inline-flex; align-items: center; gap: 4px; color: var(--critical-red);">
+                <span style="width: 10px; height: 10px; background: var(--critical-red); border-radius: 2px;"></span> Critical
+              </span>
+              <span style="display: inline-flex; align-items: center; gap: 4px; color: var(--safe-green);">
+                <span style="width: 10px; height: 10px; background: var(--safe-green); border-radius: 2px;"></span> Safe (Float &gt; 0)
+              </span>
+              <span style="display: inline-flex; align-items: center; gap: 4px; color: var(--warning-yellow);">
+                <span style="width: 12px; height: 2px; background: var(--warning-yellow);"></span> Curing Lag
+              </span>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 12px;">
+            <div class="diagram-container">
+              <svg id="networkSvg" viewBox="0 0 1140 430" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gantt Chart Card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 3.75C2 2.784 2.784 2 3.75 2h8.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25Z"/>
+                <path d="M5 5.5h6a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1 0-1.5Zm0 3.5h4a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1 0-1.5Z"/>
+              </svg>
+              Gantt Chart Timeline & Float Windows (0 to 24 Days)
+            </span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Hatched Amber = Total Float | Purple = 2d Curing Buffer
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="gantt-wrapper">
+              <div class="gantt-chart" id="ganttChart">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mathematical Step-by-Step Trace Log -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM3.5 5h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Zm0 3.5h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Z"/>
+              </svg>
+              Mathematical Step Trace & Topological Traversal Log
+            </span>
+            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem;" onclick="clearLog()">Clear Log</button>
+          </div>
+          <div class="card-body">
+            <div class="log-panel" id="mathLog">
+              <!-- Logs populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Results Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1.5 2.5A1.5 1.5 0 0 1 3 1h10a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H3a1.5 1.5 0 0 1-1.5-1.5v-11ZM3 2.5a.5.5 0 0 0-.5.5v2h11v-2a.5.5 0 0 0-.5-.5H3Zm10.5 4H2.5v7a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-7Z"/>
+              </svg>
+              CPM Schedule Results Table
+            </span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              $TF = LS - ES$ | $FF = \min(ES_{succ} - \text{Lag}) - EF$
+            </span>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="table-container">
+              <table id="resultsTable">
+                <thead>
+                  <tr>
+                    <th>Act ID</th>
+                    <th>Activity Description</th>
+                    <th>Orig Dur</th>
+                    <th>Early Start (ES)</th>
+                    <th>Early Finish (EF)</th>
+                    <th>Late Start (LS)</th>
+                    <th>Late Finish (LF)</th>
+                    <th>Total Float (TF)</th>
+                    <th>Free Float (FF)</th>
+                    <th>Driving Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    /* =========================================================================
+       SURYA 100MW SOLAR IPP - CPM SCHEDULING ENGINE SIMULATOR
+       ========================================================================= */
+
+    // Network Model Definition
+    const defaultData = {
+      activities: {
+        A: { id: "ACT-A", name: "Site Grading", duration: 3, x: 50, y: 160 },
+        B: { id: "ACT-B", name: "Inverter Foundation & Rebar", duration: 5, x: 330, y: 55 },
+        C: { id: "ACT-C", name: "Inverter Erection", duration: 4, x: 620, y: 55 },
+        D: { id: "ACT-D", name: "Substation Quality Audit", duration: 2, x: 330, y: 265 },
+        E: { id: "ACT-E", name: "Final Commissioning", duration: 3, x: 910, y: 160 }
+      },
+      relationships: [
+        { from: "A", to: "B", type: "FS", lag: 0, label: "FS + 0d" },
+        { from: "A", to: "D", type: "FS", lag: 0, label: "FS + 0d" },
+        { from: "B", to: "C", type: "FS", lag: 2, label: "FS + 2d Curing Lag" },
+        { from: "C", to: "E", type: "FS", lag: 0, label: "FS + 0d" },
+        { from: "D", to: "E", type: "FS", lag: 0, label: "FS + 0d" }
+      ]
+    };
+
+    // Current State
+    let state = {
+      activities: JSON.parse(JSON.stringify(defaultData.activities)),
+      relationships: JSON.parse(JSON.stringify(defaultData.relationships)),
+      curingLag: 2,
+      calcStep: 3, // 0: reset, 1: forward, 2: backward, 3: full float computed
+      results: {}
+    };
+
+    // Initialization
+    window.addEventListener("DOMContentLoaded", () => {
+      calculateInstant();
+    });
+
+    // Reset to defaults
+    function resetToDefaults() {
+      state.activities = JSON.parse(JSON.stringify(defaultData.activities));
+      state.relationships = JSON.parse(JSON.stringify(defaultData.relationships));
+      state.curingLag = 2;
+      state.calcStep = 0;
+
+      // Reset input fields
+      for (const [key, act] of Object.entries(state.activities)) {
+        document.getElementById(`dur${key}`).value = act.duration;
+        document.getElementById(`num${key}`).value = act.duration;
+      }
+      document.getElementById("curingLagInput").value = 2;
+      document.getElementById("scenarioSelect").value = "baseline";
+
+      clearLog();
+      addLog("↺ Network reset to default baseline configuration. All computed dates cleared.", "active-step");
+      
+      updateStatus("Reset to Defaults", "Inputs ready. Click '▶ Step 1: Run Forward Pass' to calculate earliest project boundaries.");
+      
+      // Clear results in state
+      state.results = {};
+      for (const key of Object.keys(state.activities)) {
+        state.results[key] = {
+          es: null, ef: null, ls: null, lf: null, tf: null, ff: null, isCritical: false
+        };
+      }
+
+      updateKPIs();
+      renderAll();
+    }
+
+    // Preset Scenarios
+    function loadScenario(preset) {
+      if (preset === "baseline") {
+        setActivityDurations({ A: 3, B: 5, C: 4, D: 2, E: 3 }, 2);
+        addLog("Loaded Baseline: Inverter Block 04 (A=3, B=5, C=4, D=2, E=3, Lag=2).", "active-step");
+      } else if (preset === "audit_delayed") {
+        setActivityDurations({ A: 3, B: 5, C: 4, D: 11, E: 3 }, 2);
+        addLog("Loaded Scenario: Substation Audit Delayed to 11d. Substation consumes all 9d float!", "active-step");
+      } else if (preset === "critical_shift") {
+        setActivityDurations({ A: 3, B: 5, C: 4, D: 14, E: 3 }, 2);
+        addLog("Loaded Scenario: Audit Critical Blowout (D = 14d). Critical path completely shifts to A → D → E!", "critical-log");
+      } else if (preset === "foundation_fasttrack") {
+        setActivityDurations({ A: 3, B: 3, C: 4, D: 2, E: 3 }, 1);
+        addLog("Loaded Scenario: Fast-Track Foundation (B = 3d, Curing Lag = 1d with rapid accelerator concrete).", "safe-log");
+      }
+      calculateInstant();
+    }
+
+    function setActivityDurations(durations, lag) {
+      for (const [k, v] of Object.entries(durations)) {
+        state.activities[k].duration = v;
+        document.getElementById(`dur${k}`).value = v;
+        document.getElementById(`num${k}`).value = v;
+      }
+      state.curingLag = lag;
+      document.getElementById("curingLagInput").value = lag;
+      // Update relationship lag
+      const relBC = state.relationships.find(r => r.from === "B" && r.to === "C");
+      if (relBC) {
+        relBC.lag = lag;
+        relBC.label = `FS + ${lag}d Curing Lag`;
+      }
+    }
+
+    // Input handlers
+    function updateDuration(key, val) {
+      val = parseInt(val, 10);
+      if (isNaN(val) || val < 1) val = 1;
+      state.activities[key].duration = val;
+      document.getElementById(`dur${key}`).value = val;
+      document.getElementById(`num${key}`).value = val;
+      
+      // Auto recalculate current step
+      if (state.calcStep === 3) {
+        calculateInstant(false);
+      } else if (state.calcStep === 1) {
+        runForwardPass(false);
+      } else if (state.calcStep === 2) {
+        runBackwardPass(false);
+      } else {
+        renderAll();
+      }
+    }
+
+    function updateCuringLag(val) {
+      val = parseInt(val, 10);
+      if (isNaN(val) || val < 0) val = 0;
+      state.curingLag = val;
+      document.getElementById("curingLagInput").value = val;
+      const relBC = state.relationships.find(r => r.from === "B" && r.to === "C");
+      if (relBC) {
+        relBC.lag = val;
+        relBC.label = `FS + ${val}d Curing Lag`;
+      }
+      if (state.calcStep === 3) calculateInstant(false);
+      else renderAll();
+    }
+
+    /* =========================================================================
+       CPM ENGINE CALCULATION PIPELINE
+       ========================================================================= */
+
+    // Step 1: Forward Pass
+    function runForwardPass(log = true) {
+      state.calcStep = 1;
+      const act = state.activities;
+      const lagBC = state.curingLag;
+
+      // Topological order: A -> [B, D] -> C -> E
+      const res = {};
+      for (const k of Object.keys(act)) {
+        res[k] = { es: 0, ef: 0, ls: null, lf: null, tf: null, ff: null, isCritical: false };
+      }
+
+      // 1. Task A (Root)
+      res.A.es = 0;
+      res.A.ef = res.A.es + act.A.duration;
+
+      // 2. Task B (Pred: A, FS 0)
+      res.B.es = res.A.ef + 0;
+      res.B.ef = res.B.es + act.B.duration;
+
+      // 3. Task D (Pred: A, FS 0)
+      res.D.es = res.A.ef + 0;
+      res.D.ef = res.D.es + act.D.duration;
+
+      // 4. Task C (Pred: B, FS + lagBC)
+      res.C.es = res.B.ef + lagBC;
+      res.C.ef = res.C.es + act.C.duration;
+
+      // 5. Task E (Pred: C [FS 0], D [FS 0])
+      const fromC = res.C.ef + 0;
+      const fromD = res.D.ef + 0;
+      res.E.es = Math.max(fromC, fromD);
+      res.E.ef = res.E.es + act.E.duration;
+
+      state.results = res;
+
+      if (log) {
+        addLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        addLog("▶ STEP 1: FORWARD PASS EXECUTION (Topological Left-to-Right)", "active-step");
+        addLog(`• ACT-A (Site Grading): ES = 0 ⟹ EF = 0 + ${act.A.duration} = ${res.A.ef}d`);
+        addLog(`• ACT-B (Foundation): ES = EF(A) = ${res.A.ef} ⟹ EF = ${res.B.es} + ${act.B.duration} = ${res.B.ef}d`);
+        addLog(`• ACT-D (Substation Audit): ES = EF(A) = ${res.A.ef} ⟹ EF = ${res.D.es} + ${act.D.duration} = ${res.D.ef}d`);
+        addLog(`• ACT-C (Inverter Erection): ES = EF(B) + Curing Lag (${lagBC}d) = ${res.B.ef} + ${lagBC} = ${res.C.es}d ⟹ EF = ${res.C.es} + ${act.C.duration} = ${res.C.ef}d`);
+        addLog(`• ACT-E (Commissioning): ES = max(EF(C)=${fromC}, EF(D)=${fromD}) = ${res.E.es}d ⟹ EF = ${res.E.es} + ${act.E.duration} = ${res.E.ef}d`);
+        addLog(`✔ Earliest Project Completion Date = ${res.E.ef} Days.`, "safe-log");
+      }
+
+      updateStatus("Step 1 Complete", `Forward Pass complete: Project minimum finish is ${res.E.ef} Days. Early dates (ES, EF) populated.`);
+      updateKPIs();
+      renderAll();
+    }
+
+    // Step 2: Backward Pass
+    function runBackwardPass(log = true) {
+      if (state.calcStep < 1) {
+        runForwardPass(false);
+      }
+      state.calcStep = 2;
+      const act = state.activities;
+      const lagBC = state.curingLag;
+      const res = state.results;
+
+      // Project Finish is terminal task EF
+      const projectFinish = res.E.ef;
+
+      // 1. Task E (Terminal)
+      res.E.lf = projectFinish;
+      res.E.ls = res.E.lf - act.E.duration;
+
+      // 2. Task C (Succ: E, FS 0)
+      res.C.lf = res.E.ls - 0;
+      res.C.ls = res.C.lf - act.C.duration;
+
+      // 3. Task D (Succ: E, FS 0)
+      res.D.lf = res.E.ls - 0;
+      res.D.ls = res.D.lf - act.D.duration;
+
+      // 4. Task B (Succ: C, FS + lagBC)
+      res.B.lf = res.C.ls - lagBC;
+      res.B.ls = res.B.lf - act.B.duration;
+
+      // 5. Task A (Succ: B [FS 0], D [FS 0])
+      const reqFromB = res.B.ls - 0;
+      const reqFromD = res.D.ls - 0;
+      res.A.lf = Math.min(reqFromB, reqFromD);
+      res.A.ls = res.A.lf - act.A.duration;
+
+      if (log) {
+        addLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        addLog("◀ STEP 2: BACKWARD PASS EXECUTION (Topological Right-to-Left)", "active-step");
+        addLog(`• Anchor Project Finish: LF(E) = EF(E) = ${projectFinish}d ⟹ LS(E) = ${projectFinish} - ${act.E.duration} = ${res.E.ls}d`);
+        addLog(`• ACT-C (Inverter Erection): LF = LS(E) = ${res.E.ls}d ⟹ LS = ${res.C.lf} - ${act.C.duration} = ${res.C.ls}d`);
+        addLog(`• ACT-D (Substation Audit): LF = LS(E) = ${res.E.ls}d ⟹ LS = ${res.D.lf} - ${act.D.duration} = ${res.D.ls}d`);
+        addLog(`• ACT-B (Foundation): LF = LS(C) - Lag (${lagBC}d) = ${res.C.ls} - ${lagBC} = ${res.B.lf}d ⟹ LS = ${res.B.lf} - ${act.B.duration} = ${res.B.ls}d`);
+        addLog(`• ACT-A (Site Grading): LF = min(LS(B)=${reqFromB}, LS(D)=${reqFromD}) = ${res.A.lf}d ⟹ LS = ${res.A.lf} - ${act.A.duration} = ${res.A.ls}d`);
+        addLog(`✔ Late dates (LS, LF) populated across all activities.`, "safe-log");
+      }
+
+      updateStatus("Step 2 Complete", `Backward Pass complete: Project deadline LF = ${projectFinish}d propagated to Day 0. Ready for float calculation.`);
+      updateKPIs();
+      renderAll();
+    }
+
+    // Step 3: Compute Float & Critical Path
+    function runFloatPass(log = true) {
+      if (state.calcStep < 2) {
+        runForwardPass(false);
+        runBackwardPass(false);
+      }
+      state.calcStep = 3;
+      const act = state.activities;
+      const lagBC = state.curingLag;
+      const res = state.results;
+
+      // Total Float: TF = LS - ES = LF - EF
+      for (const [k, r] of Object.entries(res)) {
+        r.tf = r.ls - r.es;
+        r.isCritical = (r.tf <= 0);
+      }
+
+      // Free Float: FF = min_{succ}(ES_succ - lag) - EF
+      // Terminal activity FF = ProjectFinish - EF
+      res.A.ff = Math.min(res.B.es - 0, res.D.es - 0) - res.A.ef;
+      res.B.ff = (res.C.es - lagBC) - res.B.ef;
+      res.C.ff = (res.E.es - 0) - res.C.ef;
+      res.D.ff = (res.E.es - 0) - res.D.ef;
+      res.E.ff = res.E.ef - res.E.ef; // 0
+
+      // Critical path sequence
+      const critTasks = Object.keys(res).filter(k => res[k].isCritical);
+
+      if (log) {
+        addLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        addLog("⭐ STEP 3: FLOAT & CRITICAL PATH EVALUATION", "active-step");
+        for (const k of Object.keys(res)) {
+          const r = res[k];
+          const tag = r.isCritical ? "CRITICAL (TF=0d)" : `SAFE (TF=${r.tf}d, FF=${r.ff}d)`;
+          const cls = r.isCritical ? "critical-log" : "safe-log";
+          addLog(`• ${act[k].id} (${act[k].name}): TF = LS(${r.ls}) - ES(${r.es}) = ${r.tf}d | FF = ${r.ff}d ⟹ ${tag}`, cls);
+        }
+        addLog(`★ CRITICAL PATH: [ ${critTasks.join(" ➔ ")} ] — Zero Float driving sequence!`, "critical-log");
+      }
+
+      updateStatus("Step 3 Complete", `Float analysis done. Critical path is [ ${critTasks.join(" → ")} ]. Total project duration = ${res.E.ef} Days.`);
+      updateKPIs();
+      renderAll();
+    }
+
+    // Instant Calculate All
+    function calculateInstant(log = true) {
+      runForwardPass(log);
+      runBackwardPass(log);
+      runFloatPass(log);
+    }
+
+    // Helper: Status indicator bar
+    function updateStatus(stepTitle, message) {
+      document.getElementById("stepPill").textContent = stepTitle;
+      document.getElementById("statusMessage").innerHTML = message;
+      document.getElementById("kpiEngineState").textContent = stepTitle;
+    }
+
+    // Helper: KPI Cards
+    function updateKPIs() {
+      const res = state.results;
+      if (!res.E || res.E.ef === null) {
+        document.getElementById("kpiFinish").textContent = "--";
+        document.getElementById("kpiCriticalPath").textContent = "--";
+        document.getElementById("kpiFloatD").textContent = "--";
+        return;
+      }
+
+      document.getElementById("kpiFinish").textContent = `${res.E.ef} Days`;
+      
+      if (state.calcStep >= 3) {
+        const critList = Object.keys(res).filter(k => res[k].isCritical).join(" → ");
+        document.getElementById("kpiCriticalPath").textContent = critList;
+        document.getElementById("kpiFloatD").textContent = `${res.D.tf} Days`;
+        if (res.D.tf === 0) {
+          document.getElementById("kpiFloatD").className = "kpi-val critical";
+        } else {
+          document.getElementById("kpiFloatD").className = "kpi-val safe";
+        }
+      } else {
+        document.getElementById("kpiCriticalPath").textContent = "Computing...";
+        document.getElementById("kpiFloatD").textContent = "Step 3 Req";
+        document.getElementById("kpiFloatD").className = "kpi-val";
+      }
+    }
+
+    // Helper: Logging
+    function addLog(msg, cls = "") {
+      const logPanel = document.getElementById("mathLog");
+      const entry = document.createElement("div");
+      entry.className = `log-entry ${cls}`;
+      entry.innerHTML = msg;
+      logPanel.appendChild(entry);
+      logPanel.scrollTop = logPanel.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById("mathLog").innerHTML = "";
+    }
+
+    /* =========================================================================
+       VISUAL RENDERING: NETWORK DIAGRAM (AON SVG)
+       ========================================================================= */
+
+    function renderAll() {
+      renderSvgDiagram();
+      renderGanttChart();
+      renderTable();
+      updateSliderPulse();
+    }
+
+    function updateSliderPulse() {
+      for (const k of Object.keys(state.activities)) {
+        const card = document.getElementById(`sliderCard${k}`);
+        if (!card) continue;
+        card.classList.remove("critical-pulse", "safe-pulse");
+        if (state.calcStep === 3 && state.results[k]) {
+          if (state.results[k].isCritical) card.classList.add("critical-pulse");
+          else card.classList.add("safe-pulse");
+        }
+      }
+    }
+
+    function renderSvgDiagram() {
+      const svg = document.getElementById("networkSvg");
+      svg.innerHTML = "";
+
+      // Defs: Arrowhead markers
+      const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      defs.innerHTML = `
+        <marker id="arrow-default" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#58a6ff"/>
+        </marker>
+        <marker id="arrow-critical" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#f85149"/>
+        </marker>
+        <marker id="arrow-curing" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#e3b341"/>
+        </marker>
+        <filter id="glow-critical" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f85149" flood-opacity="0.6"/>
+        </filter>
+        <filter id="glow-safe" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#3fb950" flood-opacity="0.4"/>
+        </filter>
+      `;
+      svg.appendChild(defs);
+
+      const boxW = 190;
+      const boxH = 92;
+
+      // 1. Draw Edges
+      state.relationships.forEach(rel => {
+        const fromAct = state.activities[rel.from];
+        const toAct = state.activities[rel.to];
+
+        const x1 = fromAct.x + boxW;
+        const y1 = fromAct.y + boxH / 2;
+        const x2 = toAct.x;
+        const y2 = toAct.y + boxH / 2;
+
+        const isCritEdge = (state.calcStep === 3 && 
+                            state.results[rel.from]?.isCritical && 
+                            state.results[rel.to]?.isCritical &&
+                            (rel.from !== "D" || state.results.D.isCritical));
+
+        let strokeColor = isCritEdge ? "#f85149" : "#58a6ff";
+        let markerId = isCritEdge ? "arrow-critical" : "arrow-default";
+        let strokeWidth = isCritEdge ? "3" : "1.8";
+        let strokeDash = "none";
+
+        if (rel.from === "B" && rel.to === "C") {
+          strokeColor = isCritEdge ? "#f85149" : "#e3b341";
+          markerId = isCritEdge ? "arrow-critical" : "arrow-curing";
+        }
+
+        // Curved cubic path
+        const dx = (x2 - x1) * 0.45;
+        const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+        const pathElem = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathElem.setAttribute("d", pathD);
+        pathElem.setAttribute("fill", "none");
+        pathElem.setAttribute("stroke", strokeColor);
+        pathElem.setAttribute("stroke-width", strokeWidth);
+        pathElem.setAttribute("marker-end", `url(#${markerId})`);
+        if (isCritEdge) {
+          pathElem.setAttribute("filter", "url(#glow-critical)");
+        }
+        svg.appendChild(pathElem);
+
+        // Edge label badge
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2 - 8;
+
+        const gBadge = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gBadge.innerHTML = `
+          <rect x="${midX - 44}" y="${midY - 11}" width="88" height="20" rx="4" fill="#161b22" stroke="${strokeColor}" stroke-width="1" opacity="0.95"/>
+          <text x="${midX}" y="${midY + 3}" fill="${strokeColor}" font-size="10" font-family="ui-monospace, monospace" font-weight="600" text-anchor="middle">${rel.label}</text>
+        `;
+        svg.appendChild(gBadge);
+      });
+
+      // 2. Draw Activity Boxes (Standard P6 6-Cell Activity Box)
+      for (const [key, act] of Object.entries(state.activities)) {
+        const res = state.results[key] || {};
+        const isCrit = (state.calcStep === 3 && res.isCritical);
+        const isSafe = (state.calcStep === 3 && !res.isCritical);
+
+        let borderColor = "#30363d";
+        let filterAttr = "";
+        if (isCrit) {
+          borderColor = "#f85149";
+          filterAttr = 'filter="url(#glow-critical)"';
+        } else if (isSafe) {
+          borderColor = "#3fb950";
+          filterAttr = 'filter="url(#glow-safe)"';
+        }
+
+        // Cell values formatting
+        const esVal = res.es !== null && res.es !== undefined ? `${res.es}` : "--";
+        const efVal = res.ef !== null && res.ef !== undefined ? `${res.ef}` : "--";
+        const lsVal = res.ls !== null && res.ls !== undefined ? `${res.ls}` : "--";
+        const lfVal = res.lf !== null && res.lf !== undefined ? `${res.lf}` : "--";
+        
+        let floatVal = "--";
+        if (state.calcStep === 3 && res.tf !== null) {
+          floatVal = `TF:${res.tf}d | FF:${res.ff}d`;
+        } else if (state.calcStep === 1) {
+          floatVal = "Early Pass";
+        } else if (state.calcStep === 2) {
+          floatVal = "Late Pass";
+        }
+
+        const gNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gNode.setAttribute("class", "node-box");
+        gNode.setAttribute("transform", `translate(${act.x}, ${act.y})`);
+        
+        gNode.innerHTML = `
+          <!-- Background container -->
+          <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="8" fill="#161b22" stroke="${borderColor}" stroke-width="${isCrit || isSafe ? 2 : 1.2}" ${filterAttr}/>
+          
+          <!-- Top Row: ES | Activity ID | EF -->
+          <line x1="0" y1="28" x2="${boxW}" y2="28" stroke="#30363d" stroke-width="1"/>
+          <line x1="52" y1="0" x2="52" y2="28" stroke="#30363d" stroke-width="1"/>
+          <line x1="${boxW - 52}" y1="0" x2="${boxW - 52}" y2="28" stroke="#30363d" stroke-width="1"/>
+
+          <!-- ES -->
+          <text x="26" y="19" fill="${state.calcStep >= 1 ? '#79c0ff' : '#6e7681'}" font-size="11" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${esVal}</text>
+          
+          <!-- Activity ID -->
+          <text x="${boxW / 2}" y="18" fill="#ffffff" font-size="11" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${act.id}</text>
+          
+          <!-- EF -->
+          <text x="${boxW - 26}" y="19" fill="${state.calcStep >= 1 ? '#79c0ff' : '#6e7681'}" font-size="11" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${efVal}</text>
+
+          <!-- Middle Row: Description & Duration -->
+          <line x1="0" y1="64" x2="${boxW}" y2="64" stroke="#30363d" stroke-width="1"/>
+          <text x="${boxW / 2}" y="45" fill="#f0f6fc" font-size="11" font-weight="600" text-anchor="middle">${act.name}</text>
+          <text x="${boxW / 2}" y="58" fill="#8b949e" font-size="9.5" font-family="ui-monospace, monospace" text-anchor="middle">Dur: ${act.duration}d</text>
+
+          <!-- Bottom Row: LS | Total Float / Free Float | LF -->
+          <line x1="52" y1="64" x2="52" y2="${boxH}" stroke="#30363d" stroke-width="1"/>
+          <line x1="${boxW - 52}" y1="64" x2="${boxW - 52}" y2="${boxH}" stroke="#30363d" stroke-width="1"/>
+
+          <!-- LS -->
+          <text x="26" y="83" fill="${state.calcStep >= 2 ? '#e3b341' : '#6e7681'}" font-size="11" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${lsVal}</text>
+          
+          <!-- Float -->
+          <text x="${boxW / 2}" y="82" fill="${isCrit ? '#ff7b72' : (isSafe ? '#56d364' : '#8b949e')}" font-size="9" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${floatVal}</text>
+          
+          <!-- LF -->
+          <text x="${boxW - 26}" y="83" fill="${state.calcStep >= 2 ? '#e3b341' : '#6e7681'}" font-size="11" font-weight="700" font-family="ui-monospace, monospace" text-anchor="middle">${lfVal}</text>
+        `;
+
+        gNode.addEventListener("click", () => {
+          highlightActivity(key);
+        });
+
+        svg.appendChild(gNode);
+      }
+    }
+
+    /* =========================================================================
+       VISUAL RENDERING: GANTT CHART
+       ========================================================================= */
+
+    function renderGanttChart() {
+      const container = document.getElementById("ganttChart");
+      container.innerHTML = "";
+
+      const maxDays = 22; // Timeline scale 0 to 22
+      const dayWidthPercent = 100 / maxDays;
+
+      // Header row
+      const headerElem = document.createElement("div");
+      headerElem.className = "gantt-timeline-header";
+      
+      let dayTicks = "";
+      for (let d = 0; d <= maxDays; d += 2) {
+        dayTicks += `<span style="position: absolute; left: ${(d / maxDays) * 100}%; transform: translateX(-50%);">D${d}</span>`;
+      }
+
+      headerElem.innerHTML = `
+        <div style="padding-left: 10px; font-weight: 700;">Activity Name</div>
+        <div class="gantt-days-axis" style="height: 18px;">${dayTicks}</div>
+      `;
+      container.appendChild(headerElem);
+
+      // Render each activity row
+      for (const [key, act] of Object.entries(state.activities)) {
+        const res = state.results[key] || {};
+        const isCrit = (state.calcStep === 3 && res.isCritical);
+
+        const row = document.createElement("div");
+        row.className = "gantt-row";
+        row.id = `ganttRow_${key}`;
+
+        // Grid lines
+        let gridLines = "";
+        for (let d = 0; d <= maxDays; d += 2) {
+          gridLines += `<div class="gantt-grid-line" style="left: ${(d / maxDays) * 100}%;"></div>`;
+        }
+
+        // Early Bar
+        let earlyBar = "";
+        if (res.es !== null && res.ef !== null) {
+          const leftPct = (res.es / maxDays) * 100;
+          const widthPct = (act.duration / maxDays) * 100;
+          const critClass = isCrit ? "critical" : "";
+          earlyBar = `
+            <div class="gantt-bar-early ${critClass}" style="left: ${leftPct}%; width: ${widthPct}%;" title="${act.name} (ES:${res.es}d → EF:${res.ef}d)">
+              ${act.duration}d
+            </div>
+          `;
+        }
+
+        // Total Float Bar Window
+        let floatBar = "";
+        if (state.calcStep === 3 && res.tf > 0 && res.ef !== null && res.lf !== null) {
+          const floatLeftPct = (res.ef / maxDays) * 100;
+          const floatWidthPct = (res.tf / maxDays) * 100;
+          floatBar = `
+            <div class="gantt-bar-float" style="left: ${floatLeftPct}%; width: ${floatWidthPct}%;" title="Total Float: ${res.tf} days runway until LF ${res.lf}d"></div>
+          `;
+        }
+
+        // Special Curing Lag block on Foundation row (ACT-B)
+        let curingLagBar = "";
+        if (key === "B" && res.ef !== null && state.curingLag > 0) {
+          const lagLeftPct = (res.ef / maxDays) * 100;
+          const lagWidthPct = (state.curingLag / maxDays) * 100;
+          curingLagBar = `
+            <div class="gantt-curing-lag" style="left: ${lagLeftPct}%; width: ${lagWidthPct}%;" title="Concrete Curing Buffer: ${state.curingLag}d chemical hydration">
+              Curing ${state.curingLag}d
+            </div>
+          `;
+        }
+
+        row.innerHTML = `
+          <div class="gantt-row-label">
+            <span class="task-code">${act.id}</span>
+            <span style="font-size: 0.75rem;">${act.name}</span>
+          </div>
+          <div class="gantt-track">
+            ${gridLines}
+            ${curingLagBar}
+            ${floatBar}
+            ${earlyBar}
+          </div>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    /* =========================================================================
+       VISUAL RENDERING: LIVE RESULTS TABLE
+       ========================================================================= */
+
+    function renderTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      for (const [key, act] of Object.entries(state.activities)) {
+        const res = state.results[key] || {};
+        const isCrit = (state.calcStep === 3 && res.isCritical);
+
+        const tr = document.createElement("tr");
+        if (isCrit) tr.className = "critical-row";
+
+        const esVal = res.es !== null && res.es !== undefined ? `${res.es}` : "--";
+        const efVal = res.ef !== null && res.ef !== undefined ? `${res.ef}` : "--";
+        const lsVal = res.ls !== null && res.ls !== undefined ? `${res.ls}` : "--";
+        const lfVal = res.lf !== null && res.lf !== undefined ? `${res.lf}` : "--";
+        const tfVal = state.calcStep === 3 && res.tf !== null ? `${res.tf}d` : "--";
+        const ffVal = state.calcStep === 3 && res.ff !== null ? `${res.ff}d` : "--";
+
+        let statusBadge = `<span class="badge-status" style="background: var(--bg-tertiary); color: var(--text-muted);">Unscheduled</span>`;
+        if (state.calcStep === 3) {
+          if (isCrit) {
+            statusBadge = `<span class="badge-status critical">CRITICAL [0d]</span>`;
+          } else {
+            statusBadge = `<span class="badge-status safe">SAFE [+${res.tf}d]</span>`;
+          }
+        } else if (state.calcStep === 1) {
+          statusBadge = `<span class="badge-status" style="background: var(--accent-blue-bg); color: var(--accent-blue);">Early Calc</span>`;
+        } else if (state.calcStep === 2) {
+          statusBadge = `<span class="badge-status" style="background: var(--warning-yellow-bg); color: var(--warning-yellow);">Late Calc</span>`;
+        }
+
+        tr.innerHTML = `
+          <td><strong>${act.id}</strong></td>
+          <td>${act.name}</td>
+          <td>${act.duration}d</td>
+          <td style="color: #79c0ff;">${esVal}</td>
+          <td style="color: #79c0ff;">${efVal}</td>
+          <td style="color: #e3b341;">${lsVal}</td>
+          <td style="color: #e3b341;">${lfVal}</td>
+          <td style="font-weight: 700; color: ${isCrit ? '#ff7b72' : '#56d364'};">${tfVal}</td>
+          <td style="color: ${res.ff > 0 ? '#56d364' : '#8b949e'};">${ffVal}</td>
+          <td>${statusBadge}</td>
+        `;
+
+        tr.addEventListener("click", () => highlightActivity(key));
+        tbody.appendChild(tr);
+      }
+    }
+
+    function highlightActivity(key) {
+      const act = state.activities[key];
+      const res = state.results[key] || {};
+      addLog(`🔍 Selected <strong>${act.id}: ${act.name}</strong> | Dur: ${act.duration}d, ES: ${res.es}d, EF: ${res.ef}d, LS: ${res.ls}d, LF: ${res.lf}d, TF: ${res.tf}d, FF: ${res.ff}d.`, "active-step");
+    }
+  </script>
+</body>
+</html>

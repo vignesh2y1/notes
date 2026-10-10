@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surya 100MW Solar IPP — Multi-Calendar Time Grid Visualizer</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --border-bright: #484f58;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-dim: #6e7681;
+      
+      --accent-blue: #58a6ff;
+      --accent-blue-bg: rgba(88, 166, 255, 0.12);
+      --solar-orange: #f0883e;
+      --solar-orange-bg: rgba(240, 136, 62, 0.15);
+      --curing-green: #3fb950;
+      --curing-green-bg: rgba(63, 185, 80, 0.15);
+      
+      --critical-red: #f85149;
+      --critical-red-bg: rgba(248, 81, 73, 0.15);
+      --warning-yellow: #e3b341;
+      --warning-yellow-bg: rgba(227, 179, 65, 0.15);
+      --purple-accent: #bc8cff;
+      --purple-bg: rgba(188, 140, 255, 0.12);
+      
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(180deg, #161b22 0%, #11151c 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-titles h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffffff;
+    }
+
+    .badge-p6 {
+      background: var(--accent-blue-bg);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-top: 4px;
+    }
+
+    /* Control Panel */
+    .controls-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    select, input[type="text"], input[type="number"] {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      font-family: var(--font-main);
+      outline: none;
+      transition: var(--transition);
+      width: 100%;
+    }
+
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px var(--accent-blue-bg);
+    }
+
+    .duration-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .duration-slider-container input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent-blue);
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .duration-quick-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .quick-pill {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      padding: 3px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .quick-pill:hover, .quick-pill.active {
+      background: var(--accent-blue-bg);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    /* Exception Toggles */
+    .exceptions-row {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+      align-items: center;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--text-main);
+      user-select: none;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      accent-color: var(--critical-red);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .checkbox-label.heat-curfew input[type="checkbox"] {
+      accent-color: var(--solar-orange);
+    }
+
+    /* Preset Scenarios */
+    .preset-scenarios-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(33, 38, 45, 0.5);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .preset-scenarios-bar span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Live Comparison Cards */
+    .comparison-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 1024px) {
+      .comparison-cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .cal-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      position: relative;
+      transition: var(--transition);
+    }
+
+    .cal-card:hover {
+      border-color: var(--border-bright);
+    }
+
+    .cal-card.office {
+      border-top: 4px solid var(--accent-blue);
+    }
+
+    .cal-card.site {
+      border-top: 4px solid var(--solar-orange);
+    }
+
+    .cal-card.curing {
+      border-top: 4px solid var(--curing-green);
+    }
+
+    .cal-card-header {
+      padding: 14px 18px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .cal-title-box h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cal-badge {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .office .cal-badge {
+      background: var(--accent-blue-bg);
+      color: var(--accent-blue);
+      border: 1px solid var(--accent-blue);
+    }
+
+    .site .cal-badge {
+      background: var(--solar-orange-bg);
+      color: var(--solar-orange);
+      border: 1px solid var(--solar-orange);
+    }
+
+    .curing .cal-badge {
+      background: var(--curing-green-bg);
+      color: var(--curing-green);
+      border: 1px solid var(--curing-green);
+    }
+
+    .cal-subtitle {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .cal-card-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed rgba(48, 54, 61, 0.6);
+      font-size: 0.82rem;
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .stat-val.highlight-date {
+      color: #ffffff;
+      font-size: 0.88rem;
+    }
+
+    .stat-val.penalty {
+      color: var(--critical-red);
+    }
+
+    .efficiency-meter {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+      background: rgba(13, 17, 23, 0.5);
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .efficiency-bar-bg {
+      height: 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .efficiency-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .office .efficiency-bar-fill { background: var(--accent-blue); }
+    .site .efficiency-bar-fill { background: var(--solar-orange); }
+    .curing .efficiency-bar-fill { background: var(--curing-green); }
+
+    /* 14-Day Calendar Grid */
+    .grid-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .grid-card-header {
+      padding: 14px 20px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .grid-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid-legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.74rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    /* Grid Visual Elements */
+    .calendar-timeline-container {
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    .matrix-table {
+      min-width: 1000px;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 4px;
+    }
+
+    .day-header-cell {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      width: 6.8%;
+    }
+
+    .day-header-cell.weekend {
+      background: rgba(48, 54, 61, 0.25);
+      color: var(--text-dim);
+    }
+
+    .day-header-cell.holiday {
+      background: rgba(248, 81, 73, 0.12);
+      border-color: var(--critical-red);
+      color: var(--critical-red);
+    }
+
+    .matrix-row-label {
+      width: 160px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .day-hour-strip-cell {
+      background: rgba(13, 17, 23, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      height: 60px;
+      padding: 3px;
+      vertical-align: top;
+      position: relative;
+    }
+
+    .hour-blocks-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 1.5px;
+      height: 100%;
+      width: 100%;
+    }
+
+    .hour-block {
+      border-radius: 1.5px;
+      background: #11151c;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    /* Hour Block States */
+    .hour-block.non-working {
+      background: #161b22;
+      opacity: 0.4;
+    }
+
+    .hour-block.weekend-non-working {
+      background: repeating-linear-gradient(
+        45deg,
+        #161b22,
+        #161b22 2px,
+        #0d1117 2px,
+        #0d1117 4px
+      );
+      opacity: 0.5;
+    }
+
+    .hour-block.holiday-block {
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(248, 81, 73, 0.3),
+        rgba(248, 81, 73, 0.3) 2px,
+        #161b22 2px,
+        #161b22 4px
+      );
+      border: 0.5px solid var(--critical-red);
+    }
+
+    .hour-block.curfew-block {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(240, 136, 62, 0.4),
+        rgba(240, 136, 62, 0.4) 2px,
+        #161b22 2px,
+        #161b22 4px
+      );
+    }
+
+    .hour-block.work-available {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .hour-block.office-active {
+      background: var(--accent-blue);
+      box-shadow: 0 0 4px rgba(88, 166, 255, 0.6);
+    }
+
+    .hour-block.site-active {
+      background: var(--solar-orange);
+      box-shadow: 0 0 4px rgba(240, 136, 62, 0.6);
+    }
+
+    .hour-block.curing-active {
+      background: var(--curing-green);
+      box-shadow: 0 0 4px rgba(63, 185, 80, 0.6);
+    }
+
+    /* Synchronized Timeline Bars (Continuous View) */
+    .synced-timeline-wrapper {
+      margin-top: 24px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 18px;
+    }
+
+    .synced-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .timeline-lane {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      align-items: center;
+      height: 38px;
+      margin-bottom: 8px;
+      background: rgba(33, 38, 45, 0.4);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .timeline-lane-label {
+      padding: 0 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .timeline-lane-track {
+      position: relative;
+      height: 100%;
+      width: 100%;
+      background: #0d1117;
+      border-left: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .timeline-active-span {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .timeline-dead-time {
+      position: absolute;
+      top: 10px;
+      bottom: 10px;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(248, 81, 73, 0.15),
+        rgba(248, 81, 73, 0.15) 6px,
+        rgba(0, 0, 0, 0.2) 6px,
+        rgba(0, 0, 0, 0.2) 12px
+      );
+      border: 1px dashed var(--critical-red);
+      border-radius: 3px;
+    }
+
+    /* Relationship Handoff Simulator Card */
+    .handoff-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .handoff-header {
+      padding: 14px 20px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .handoff-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .handoff-selectors {
+      display: grid;
+      grid-template-columns: 1fr 140px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    @media (max-width: 900px) {
+      .handoff-selectors {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .handoff-node {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .handoff-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .handoff-arrow-icon {
+      font-size: 1.4rem;
+      color: var(--accent-blue);
+    }
+
+    .handoff-result-panel {
+      background: #090d13;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .handoff-alert {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .handoff-alert.warning {
+      background: rgba(227, 179, 65, 0.12);
+      border: 1px solid var(--warning-yellow);
+      color: #ffe699;
+    }
+
+    .handoff-alert.critical {
+      background: var(--critical-red-bg);
+      border: 1px solid var(--critical-red);
+      color: #ffb4b0;
+    }
+
+    .handoff-alert.safe {
+      background: var(--safe-green-bg);
+      border: 1px solid var(--safe-green);
+      color: #bbf2c4;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Header -->
+    <header>
+      <div class="header-titles">
+        <h1>
+          <span>Surya 100MW Solar IPP</span>
+          <span class="badge-p6">Multi-Calendar Time Filter Visualizer</span>
+        </h1>
+        <p>Mathematical Interval Walking Engine | How Calendars Elongate Work Duration & Create Cross-Trade Handoff Gaps</p>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);">
+          P6 Calendar Hierarchy: <strong>Overrides &gt; Weekly Pattern &gt; Day Template</strong>
+        </span>
+      </div>
+    </header>
+
+    <!-- Controls Card -->
+    <div class="controls-card">
+      <div class="controls-grid">
+
+        <!-- Start Date & Time -->
+        <div class="control-group">
+          <label class="control-label">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4.75 0a.75.75 0 0 1 .75.75V2h5V.75a.75.75 0 0 1 1.5 0V2h1.25c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 13.25 16H2.75A1.75 1.75 0 0 1 1 14.25V3.75C1 2.784 1.784 2 2.75 2H4V.75A.75.75 0 0 1 4.75 0ZM2.5 7.5v6.75c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25V7.5H2.5Z"/>
+            </svg>
+            Task Start Day (Day 1)
+          </label>
+          <select id="startDaySelect" onchange="recalculate()">
+            <option value="4" selected>Friday (Classic Weekend Handoff Trap)</option>
+            <option value="0">Monday (Start of Working Week)</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="5">Saturday (Half/Full Weekend Start)</option>
+            <option value="6">Sunday</option>
+          </select>
+        </div>
+
+        <!-- Start Hour -->
+        <div class="control-group">
+          <label class="control-label">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v3.69l2.28 2.28a.75.75 0 1 1-1.06 1.06l-2.5-2.5a.75.75 0 0 1-.22-.53V4.75a.75.75 0 0 1 1.5 0Z"/>
+            </svg>
+            Start Time
+          </label>
+          <select id="startHourSelect" onchange="recalculate()">
+            <option value="8" selected>08:00 AM (Morning Shift Start)</option>
+            <option value="12">12:00 PM (Midday / Lunch Transition)</option>
+            <option value="14">02:00 PM (Afternoon Shift)</option>
+            <option value="16">04:00 PM (Late Afternoon - Near End of Day)</option>
+            <option value="0">00:00 Midnight</option>
+          </select>
+        </div>
+
+        <!-- Planned Work Duration -->
+        <div class="control-group" style="grid-column: span 2;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="control-label">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2.5 1.75a.75.75 0 0 1 1.5 0V3h8V1.75a.75.75 0 0 1 1.5 0V3h.25C14.56 3 15 3.44 15 4.19v9.62c0 .75-.44 1.19-1.25 1.19H2.25c-.81 0-1.25-.44-1.25-1.19V4.19C1 3.44 1.44 3 2.25 3H2.5V1.75Z"/>
+              </svg>
+              Planned Work Duration: <span id="durValDisplay" style="color: var(--accent-blue); font-family: var(--font-mono); font-weight: 700;">24 Work Hours</span>
+            </label>
+          </div>
+          
+          <div class="duration-slider-container">
+            <input type="range" id="durationSlider" min="4" max="80" step="4" value="24" oninput="updateDurationFromSlider(this.value)">
+            <input type="number" id="durationNumber" min="1" max="120" value="24" style="width: 70px; text-align: center; font-family: var(--font-mono); font-weight: 700;" onchange="updateDurationFromNumber(this.value)">
+          </div>
+
+          <div class="duration-quick-pills">
+            <span class="quick-pill" onclick="setQuickDuration(8)">8h (1 Office Day)</span>
+            <span class="quick-pill" onclick="setQuickDuration(16)">16h (2 Office Days)</span>
+            <span class="quick-pill active" onclick="setQuickDuration(24)">24h (Concrete Curing / 3 Office Days)</span>
+            <span class="quick-pill" onclick="setQuickDuration(40)">40h (1 Full Office Week)</span>
+            <span class="quick-pill" onclick="setQuickDuration(60)">60h (1 Full Site Week)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Overrides & Exceptions Checkboxes -->
+      <div class="exceptions-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="holidayMondayCheck" onchange="recalculate()">
+          <span>🇮🇳 Gazetted Public Holiday on Day 4 (Monday) — <em>Independence Day / Gandhi Jayanti</em></span>
+        </label>
+
+        <label class="checkbox-label heat-curfew">
+          <input type="checkbox" id="heatCurfewCheck" onchange="recalculate()">
+          <span>☀️ Rajasthan Desert High-Heat Moratorium (12:00 PM – 03:00 PM Banned on Site)</span>
+        </label>
+      </div>
+
+      <!-- Quick Preset Scenarios -->
+      <div class="preset-scenarios-bar">
+        <span>⚡ Quick Scenario Presets:</span>
+        <button class="quick-pill" onclick="loadPreset('friday_afternoon')">The Friday Afternoon Dilemma (Fri 16:00, 24h)</button>
+        <button class="quick-pill" onclick="loadPreset('holiday_trap')">The Holiday Trap (Fri 08:00 + Mon Holiday, 40h)</button>
+        <button class="quick-pill" onclick="loadPreset('pure_curing')">Curing vs Office Comparison (Fri 08:00, 24h)</button>
+        <button class="quick-pill" onclick="loadPreset('desert_summer')">High-Heat Desert Summer Shift (Fri 08:00, 60h)</button>
+      </div>
+    </div>
+
+    <!-- Live Comparison Cards -->
+    <div class="comparison-cards-grid">
+
+      <!-- Calendar 1: Office -->
+      <div class="cal-card office">
+        <div class="cal-card-header">
+          <div class="cal-title-box">
+            <h3>
+              <span>Calendar 1: 5-Day Standard</span>
+            </h3>
+            <div class="cal-subtitle">Corporate Office &amp; DISCOM Grid Permitting</div>
+          </div>
+          <span class="cal-badge">8h/day (Mon-Fri)</span>
+        </div>
+        <div class="cal-card-body">
+          <div class="stat-row">
+            <span class="stat-label">Shift Hours</span>
+            <span class="stat-val">08:00 - 17:00 (1h Lunch)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Start Timestamp</span>
+            <span class="stat-val" id="offStart">Fri 16-Oct 08:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Finish Timestamp</span>
+            <span class="stat-val highlight-date" id="offFinish" style="color: var(--accent-blue);">Tue 20-Oct 17:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Elapsed Calendar Time</span>
+            <span class="stat-val" id="offElapsed">4.38 Days (105 hrs)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Inactive Non-Working Delay</span>
+            <span class="stat-val penalty" id="offDeadTime">+81 hrs Dead Time</span>
+          </div>
+
+          <div class="efficiency-meter">
+            <div style="display: flex; justify-content: space-between; font-size: 0.74rem;">
+              <span class="stat-label">Calendar Time Efficiency:</span>
+              <span class="stat-val" id="offEffVal" style="color: var(--accent-blue);">22.9%</span>
+            </div>
+            <div class="efficiency-bar-bg">
+              <div class="efficiency-bar-fill" id="offEffBar" style="width: 22.9%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar 2: Solar Site -->
+      <div class="cal-card site">
+        <div class="cal-card-header">
+          <div class="cal-title-box">
+            <h3>
+              <span>Calendar 2: 6-Day Solar Site</span>
+            </h3>
+            <div class="cal-subtitle">Desert Civil Piling &amp; Tracker Erection</div>
+          </div>
+          <span class="cal-badge">10h/day (Mon-Sat)</span>
+        </div>
+        <div class="cal-card-body">
+          <div class="stat-row">
+            <span class="stat-label">Shift Hours</span>
+            <span class="stat-val">08:00 - 18:00 (Continuous)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Start Timestamp</span>
+            <span class="stat-val" id="siteStart">Fri 16-Oct 08:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Finish Timestamp</span>
+            <span class="stat-val highlight-date" id="siteFinish" style="color: var(--solar-orange);">Mon 19-Oct 12:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Elapsed Calendar Time</span>
+            <span class="stat-val" id="siteElapsed">3.17 Days (76 hrs)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Inactive Non-Working Delay</span>
+            <span class="stat-val penalty" id="siteDeadTime">+52 hrs Dead Time</span>
+          </div>
+
+          <div class="efficiency-meter">
+            <div style="display: flex; justify-content: space-between; font-size: 0.74rem;">
+              <span class="stat-label">Calendar Time Efficiency:</span>
+              <span class="stat-val" id="siteEffVal" style="color: var(--solar-orange);">31.6%</span>
+            </div>
+            <div class="efficiency-bar-bg">
+              <div class="efficiency-bar-fill" id="siteEffBar" style="width: 31.6%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar 3: Continuous Curing -->
+      <div class="cal-card curing">
+        <div class="cal-card-header">
+          <div class="cal-title-box">
+            <h3>
+              <span>Calendar 3: 7-Day Continuous</span>
+            </h3>
+            <div class="cal-subtitle">Inverter Pad Concrete Curing (Chemical Hydration)</div>
+          </div>
+          <span class="cal-badge">24h/day (Mon-Sun)</span>
+        </div>
+        <div class="cal-card-body">
+          <div class="stat-row">
+            <span class="stat-label">Shift Hours</span>
+            <span class="stat-val">24h Continuous (No Shutdowns)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Start Timestamp</span>
+            <span class="stat-val" id="cureStart">Fri 16-Oct 08:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Finish Timestamp</span>
+            <span class="stat-val highlight-date" id="cureFinish" style="color: var(--curing-green);">Sat 17-Oct 08:00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Elapsed Calendar Time</span>
+            <span class="stat-val" id="cureElapsed">1.00 Days (24 hrs)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Inactive Non-Working Delay</span>
+            <span class="stat-val" id="cureDeadTime" style="color: var(--curing-green);">0 hrs (Zero Freeze!)</span>
+          </div>
+
+          <div class="efficiency-meter">
+            <div style="display: flex; justify-content: space-between; font-size: 0.74rem;">
+              <span class="stat-label">Calendar Time Efficiency:</span>
+              <span class="stat-val" id="cureEffVal" style="color: var(--curing-green);">100.0%</span>
+            </div>
+            <div class="efficiency-bar-bg">
+              <div class="efficiency-bar-fill" id="cureEffBar" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 14-Day Calendar Time Grid -->
+    <div class="grid-card">
+      <div class="grid-card-header">
+        <div class="grid-card-title">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25ZM1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM3.5 4h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Zm0 3h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Zm0 3h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5Z"/>
+          </svg>
+          14-Day Calendar Grid: Hour-by-Hour Interval Walking Matrix (336 Hours)
+        </div>
+
+        <div class="grid-legend">
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--accent-blue);"></span>
+            <span>Office Work</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--solar-orange);"></span>
+            <span>Site Work</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: var(--curing-green);"></span>
+            <span>Continuous Curing</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: rgba(255,255,255,0.15);"></span>
+            <span>Available Working Hours</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: #161b22; border: 1px solid var(--border-color);"></span>
+            <span>Non-Working / Night</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: repeating-linear-gradient(45deg, #f85149, #f85149 2px, #161b22 2px, #161b22 4px);"></span>
+            <span>Holiday Override</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="calendar-timeline-container">
+        <!-- Matrix Table: Days columns, 3 calendar rows -->
+        <table class="matrix-table" id="calendarMatrixTable">
+          <!-- Populated by JavaScript -->
+        </table>
+
+        <!-- Continuous Synchronized Timeline View -->
+        <div class="synced-timeline-wrapper">
+          <div class="synced-header">
+            <span>Continuous Synchronized Physical Timeline (Chronological UTC Horizon)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Red Dashed Box = Non-Working Waiting Penalty (Dead Time)
+            </span>
+          </div>
+
+          <!-- Lane 1: Office -->
+          <div class="timeline-lane">
+            <div class="timeline-lane-label" style="color: var(--accent-blue);">5-Day Office</div>
+            <div class="timeline-lane-track" id="syncLaneOffice"></div>
+          </div>
+
+          <!-- Lane 2: Site -->
+          <div class="timeline-lane">
+            <div class="timeline-lane-label" style="color: var(--solar-orange);">6-Day Site</div>
+            <div class="timeline-lane-track" id="syncLaneSite"></div>
+          </div>
+
+          <!-- Lane 3: Curing -->
+          <div class="timeline-lane">
+            <div class="timeline-lane-label" style="color: var(--curing-green);">7-Day Curing</div>
+            <div class="timeline-lane-track" id="syncLaneCuring"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Relationship Handoff Simulator Card -->
+    <div class="handoff-card">
+      <div class="handoff-header">
+        <div class="grid-card-title">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+          </svg>
+          Cross-Calendar Predecessor ➔ Successor Relationship Handoff Simulator
+        </div>
+        <span style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">
+          P6 Rule: Lag Calendar &amp; Calendar Boundary Mismatches
+        </span>
+      </div>
+
+      <div class="handoff-body">
+        <div class="handoff-selectors">
+
+          <!-- Predecessor Task -->
+          <div class="handoff-node">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #ffffff;">Task 1: Predecessor Activity</div>
+            <div class="control-group">
+              <label class="control-label">Predecessor Calendar</label>
+              <select id="handoffPredCal" onchange="recalculateHandoff()">
+                <option value="site" selected>6-Day Solar Site (Civil Piling &amp; Rebar)</option>
+                <option value="curing">7-Day Continuous (Pad Concrete Pouring)</option>
+                <option value="office">5-Day Office (Design Approval)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Work Duration (Hours)</label>
+              <input type="number" id="handoffPredDur" value="20" min="4" max="60" onchange="recalculateHandoff()">
+            </div>
+          </div>
+
+          <!-- Relationship & Lag -->
+          <div class="handoff-connector">
+            <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--accent-blue);">
+              FS (Finish-to-Start)
+            </div>
+            <div class="handoff-arrow-icon">➔</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">
+              Lag: <span id="handoffLagDisplay">0h</span>
+            </div>
+            <input type="number" id="handoffLagInput" value="0" min="0" max="72" step="12" style="width: 60px; text-align: center; font-family: var(--font-mono); font-size: 0.78rem;" onchange="recalculateHandoff()">
+          </div>
+
+          <!-- Successor Task -->
+          <div class="handoff-node">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #ffffff;">Task 2: Successor Activity</div>
+            <div class="control-group">
+              <label class="control-label">Successor Calendar</label>
+              <select id="handoffSuccCal" onchange="recalculateHandoff()">
+                <option value="office" selected>5-Day Office (DISCOM Quality Inspection Sign-off)</option>
+                <option value="curing">7-Day Continuous (Concrete Chemical Curing)</option>
+                <option value="site">6-Day Solar Site (Equipment Erection)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Work Duration (Hours)</label>
+              <input type="number" id="handoffSuccDur" value="16" min="4" max="60" onchange="recalculateHandoff()">
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Live Handoff Analysis Panel -->
+        <div class="handoff-result-panel" id="handoffResultBox">
+          <!-- Populated by JavaScript -->
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* =========================================================================
+       SURYA 100MW SOLAR IPP - MULTI-CALENDAR INTERVAL WALKING ENGINE
+       ========================================================================= */
+
+    const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+    // Base Date anchor: Friday Oct 16, 2026
+    const BASE_YEAR = 2026;
+    const BASE_MONTH = 9; // October (0-indexed)
+    const BASE_DATE = 16; // 16th is Friday
+
+    // 14-Day Calendar Model
+    let currentConfig = {
+      startDayIndex: 4, // 0: Mon ... 4: Fri ... 6: Sun
+      startHour: 8,     // 8: 08:00 AM
+      workDuration: 24, // in work hours
+      hasHolidayMonday: false,
+      hasHeatCurfew: false
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      recalculate();
+      recalculateHandoff();
+    });
+
+    // Preset Scenarios
+    function loadPreset(presetKey) {
+      if (presetKey === "friday_afternoon") {
+        document.getElementById("startDaySelect").value = "4";
+        document.getElementById("startHourSelect").value = "16"; // 4 PM
+        setDuration(24);
+        document.getElementById("holidayMondayCheck").checked = false;
+        document.getElementById("heatCurfewCheck").checked = false;
+      } else if (presetKey === "holiday_trap") {
+        document.getElementById("startDaySelect").value = "4";
+        document.getElementById("startHourSelect").value = "8";
+        setDuration(40);
+        document.getElementById("holidayMondayCheck").checked = true;
+        document.getElementById("heatCurfewCheck").checked = false;
+      } else if (presetKey === "pure_curing") {
+        document.getElementById("startDaySelect").value = "4";
+        document.getElementById("startHourSelect").value = "8";
+        setDuration(24);
+        document.getElementById("holidayMondayCheck").checked = false;
+        document.getElementById("heatCurfewCheck").checked = false;
+      } else if (presetKey === "desert_summer") {
+        document.getElementById("startDaySelect").value = "4";
+        document.getElementById("startHourSelect").value = "8";
+        setDuration(60);
+        document.getElementById("holidayMondayCheck").checked = false;
+        document.getElementById("heatCurfewCheck").checked = true;
+      }
+      recalculate();
+    }
+
+    function setQuickDuration(hours) {
+      setDuration(hours);
+      // highlight active pill
+      document.querySelectorAll(".duration-quick-pills .quick-pill").forEach(p => {
+        if (p.textContent.startsWith(`${hours}h`)) p.classList.add("active");
+        else p.classList.remove("active");
+      });
+      recalculate();
+    }
+
+    function updateDurationFromSlider(val) {
+      setDuration(parseInt(val, 10));
+      recalculate();
+    }
+
+    function updateDurationFromNumber(val) {
+      setDuration(parseInt(val, 10));
+      recalculate();
+    }
+
+    function setDuration(val) {
+      currentConfig.workDuration = val;
+      document.getElementById("durationSlider").value = val;
+      document.getElementById("durationNumber").value = val;
+      document.getElementById("durValDisplay").textContent = `${val} Work Hours`;
+    }
+
+    /* =========================================================================
+       CALENDAR DEFINITIONS & INTERVAL TESTERS
+       ========================================================================= */
+
+    /**
+     * Checks if a given physical hour (0..335 in the 14-day window) is working
+     * for a given calendar type.
+     */
+    function isHourWorking(calType, absoluteHour, config) {
+      const dayOffset = Math.floor(absoluteHour / 24);
+      const hourOfDay = absoluteHour % 24;
+      const dayOfWeek = (config.startDayIndex + dayOffset) % 7; // 0: Mon, 1: Tue ... 5: Sat, 6: Sun
+
+      // Holiday Check: If dayOffset === 3 (Monday on Day 4) and holiday checked
+      const isMondayHoliday = config.hasHolidayMonday && (dayOfWeek === 0);
+
+      if (calType === "office") {
+        // 5-Day Standard: Mon-Fri 08:00 - 17:00 (12:00-13:00 lunch break = non-working)
+        if (dayOfWeek === 5 || dayOfWeek === 6) return false; // Weekend
+        if (isMondayHoliday) return false;                    // Holiday
+        if (hourOfDay === 12) return false;                   // 1h Lunch break
+        return (hourOfDay >= 8 && hourOfDay < 17);
+      }
+
+      if (calType === "site") {
+        // 6-Day Solar Site: Mon-Sat 08:00 - 18:00 (10h/day)
+        if (dayOfWeek === 6) return false;                    // Sunday
+        if (isMondayHoliday) return false;                    // Holiday
+        
+        // Heat Curfew: 12:00 - 15:00 banned
+        if (config.hasHeatCurfew && hourOfDay >= 12 && hourOfDay < 15) {
+          return false;
+        }
+        return (hourOfDay >= 8 && hourOfDay < 18);
+      }
+
+      if (calType === "curing") {
+        // 7-Day Continuous: Mon-Sun 24h continuous (Chemical reaction does not stop!)
+        return true;
+      }
+
+      return false;
+    }
+
+    /**
+     * Helper to check hour nature for styling (holiday, weekend, curfew)
+     */
+    function getHourMeta(calType, absoluteHour, config) {
+      const dayOffset = Math.floor(absoluteHour / 24);
+      const hourOfDay = absoluteHour % 24;
+      const dayOfWeek = (config.startDayIndex + dayOffset) % 7;
+      const isMondayHoliday = config.hasHolidayMonday && (dayOfWeek === 0);
+
+      const isWorking = isHourWorking(calType, absoluteHour, config);
+      const isWeekend = (dayOfWeek === 5 && calType === "office") || (dayOfWeek === 6);
+      const isCurfew = config.hasHeatCurfew && (hourOfDay >= 12 && hourOfDay < 15);
+
+      return {
+        isWorking,
+        isWeekend,
+        isMondayHoliday,
+        isCurfew,
+        dayOffset,
+        hourOfDay,
+        dayOfWeek
+      };
+    }
+
+    /* =========================================================================
+       INTERVAL WALKING ALGORITHM
+       ========================================================================= */
+
+    function walkCalendar(calType, config) {
+      const startAbsHour = config.startHour;
+      let remainingDuration = config.workDuration;
+      let currentHour = startAbsHour;
+      let activeHours = []; // list of absolute hours consumed
+
+      // Walk hour by hour
+      while (remainingDuration > 0 && currentHour < 336) {
+        if (isHourWorking(calType, currentHour, config)) {
+          activeHours.push(currentHour);
+          remainingDuration--;
+        }
+        currentHour++;
+      }
+
+      const finishAbsHour = currentHour; // finish boundary
+      const elapsedClockHours = finishAbsHour - startAbsHour;
+      const elapsedDays = (elapsedClockHours / 24).toFixed(2);
+      const deadTimeHours = elapsedClockHours - config.workDuration;
+      const efficiency = ((config.workDuration / elapsedClockHours) * 100).toFixed(1);
+
+      return {
+        startAbsHour,
+        finishAbsHour,
+        elapsedClockHours,
+        elapsedDays,
+        deadTimeHours,
+        efficiency,
+        activeHours
+      };
+    }
+
+    function formatTimestamp(absHour, config) {
+      const dayOffset = Math.floor(absHour / 24);
+      const hourOfDay = absHour % 24;
+      const dayOfWeek = (config.startDayIndex + dayOffset) % 7;
+
+      const dayName = DAY_NAMES[dayOfWeek];
+      const calDayNum = BASE_DATE + dayOffset;
+      const hourStr = hourOfDay.toString().padStart(2, "0") + ":00";
+
+      return `${dayName} ${calDayNum}-Oct ${hourStr}`;
+    }
+
+    /* =========================================================================
+       MAIN RECALCULATION & RENDER
+       ========================================================================= */
+
+    function recalculate() {
+      // Gather config
+      currentConfig.startDayIndex = parseInt(document.getElementById("startDaySelect").value, 10);
+      currentConfig.startHour = parseInt(document.getElementById("startHourSelect").value, 10);
+      currentConfig.hasHolidayMonday = document.getElementById("holidayMondayCheck").checked;
+      currentConfig.hasHeatCurfew = document.getElementById("heatCurfewCheck").checked;
+
+      // Run Interval Walkers
+      const resOffice = walkCalendar("office", currentConfig);
+      const resSite = walkCalendar("site", currentConfig);
+      const resCuring = walkCalendar("curing", currentConfig);
+
+      // 1. Update Comparison Cards
+      updateComparisonCards(resOffice, resSite, resCuring);
+
+      // 2. Render 14-Day Calendar Matrix Grid
+      renderMatrixGrid(resOffice, resSite, resCuring);
+
+      // 3. Render Continuous Synchronized Timeline
+      renderSyncedTimelines(resOffice, resSite, resCuring);
+    }
+
+    function updateComparisonCards(off, site, cure) {
+      // Office
+      document.getElementById("offStart").textContent = formatTimestamp(off.startAbsHour, currentConfig);
+      document.getElementById("offFinish").textContent = formatTimestamp(off.finishAbsHour, currentConfig);
+      document.getElementById("offElapsed").textContent = `${off.elapsedDays} Days (${off.elapsedClockHours} hrs)`;
+      document.getElementById("offDeadTime").textContent = `+${off.deadTimeHours} hrs Dead Time`;
+      document.getElementById("offEffVal").textContent = `${off.efficiency}%`;
+      document.getElementById("offEffBar").style.width = `${off.efficiency}%`;
+
+      // Site
+      document.getElementById("siteStart").textContent = formatTimestamp(site.startAbsHour, currentConfig);
+      document.getElementById("siteFinish").textContent = formatTimestamp(site.finishAbsHour, currentConfig);
+      document.getElementById("siteElapsed").textContent = `${site.elapsedDays} Days (${site.elapsedClockHours} hrs)`;
+      document.getElementById("siteDeadTime").textContent = `+${site.deadTimeHours} hrs Dead Time`;
+      document.getElementById("siteEffVal").textContent = `${site.efficiency}%`;
+      document.getElementById("siteEffBar").style.width = `${site.efficiency}%`;
+
+      // Curing
+      document.getElementById("cureStart").textContent = formatTimestamp(cure.startAbsHour, currentConfig);
+      document.getElementById("cureFinish").textContent = formatTimestamp(cure.finishAbsHour, currentConfig);
+      document.getElementById("cureElapsed").textContent = `${cure.elapsedDays} Days (${cure.elapsedClockHours} hrs)`;
+      document.getElementById("cureDeadTime").textContent = cure.deadTimeHours === 0 ? "0 hrs (Zero Freeze!)" : `+${cure.deadTimeHours} hrs`;
+      document.getElementById("cureEffVal").textContent = `${cure.efficiency}%`;
+      document.getElementById("cureEffBar").style.width = `${cure.efficiency}%`;
+    }
+
+    function renderMatrixGrid(off, site, cure) {
+      const table = document.getElementById("calendarMatrixTable");
+      table.innerHTML = "";
+
+      // 1. Header Row (Day 1 to 14)
+      let headerTr = document.createElement("tr");
+      headerTr.innerHTML = `<th style="width: 160px; background: transparent; border: none;"></th>`;
+
+      for (let d = 0; d < 14; d++) {
+        const dayOfWeek = (currentConfig.startDayIndex + d) % 7;
+        const dayName = DAY_NAMES[dayOfWeek];
+        const dayDate = BASE_DATE + d;
+        const isSun = (dayOfWeek === 6);
+        const isSat = (dayOfWeek === 5);
+        const isHoliday = currentConfig.hasHolidayMonday && (dayOfWeek === 0);
+
+        let cls = "day-header-cell";
+        if (isSun || isSat) cls += " weekend";
+        if (isHoliday) cls += " holiday";
+
+        headerTr.innerHTML += `
+          <th class="${cls}">
+            <div>${dayName}</div>
+            <div style="font-size: 0.68rem; color: #f0f6fc;">${dayDate}-Oct</div>
+            <div style="font-size: 0.62rem; color: var(--text-dim);">D${d+1}</div>
+          </th>
+        `;
+      }
+      table.appendChild(headerTr);
+
+      // Helper to build day strip
+      function buildCalendarRow(calKey, calName, walkResult, activeColorClass) {
+        const tr = document.createElement("tr");
+        const activeSet = new Set(walkResult.activeHours);
+
+        let rowHtml = `<td class="matrix-row-label">${calName}</td>`;
+
+        for (let d = 0; d < 14; d++) {
+          let miniBlocksHtml = "";
+
+          for (let h = 0; h < 24; h++) {
+            const absH = d * 24 + h;
+            const meta = getHourMeta(calKey, absH, currentConfig);
+            const isActive = activeSet.has(absH);
+
+            let blockClass = "hour-block";
+            if (isActive) {
+              blockClass += ` ${activeColorClass}`;
+            } else if (meta.isWorking) {
+              blockClass += " work-available";
+            } else if (meta.isMondayHoliday) {
+              blockClass += " holiday-block";
+            } else if (meta.isWeekend) {
+              blockClass += " weekend-non-working";
+            } else if (meta.isCurfew && calKey === "site") {
+              blockClass += " curfew-block";
+            } else {
+              blockClass += " non-working";
+            }
+
+            const title = `Day ${d+1} (${DAY_NAMES[meta.dayOfWeek]}) ${h.toString().padStart(2, "0")}:00 - ${isActive ? 'ACTIVE WORK' : (meta.isWorking ? 'Available' : 'Closed')}`;
+            miniBlocksHtml += `<div class="${blockClass}" title="${title}"></div>`;
+          }
+
+          rowHtml += `
+            <td class="day-hour-strip-cell">
+              <div class="hour-blocks-mini-grid">
+                ${miniBlocksHtml}
+              </div>
+            </td>
+          `;
+        }
+
+        tr.innerHTML = rowHtml;
+        return tr;
+      }
+
+      table.appendChild(buildCalendarRow("office", "5-Day Office", off, "office-active"));
+      table.appendChild(buildCalendarRow("site", "6-Day Site", site, "site-active"));
+      table.appendChild(buildCalendarRow("curing", "7-Day Continuous", cure, "curing-active"));
+    }
+
+    function renderSyncedTimelines(off, site, cure) {
+      const maxHours = 336; // 14 days
+
+      function fillTrack(elemId, res, color, label) {
+        const track = document.getElementById(elemId);
+        track.innerHTML = "";
+
+        const startPct = (res.startAbsHour / maxHours) * 100;
+        const totalSpanPct = (res.elapsedClockHours / maxHours) * 100;
+
+        // Active work duration span
+        const span = document.createElement("div");
+        span.className = "timeline-active-span";
+        span.style.left = `${startPct}%`;
+        span.style.width = `${totalSpanPct}%`;
+        span.style.background = color;
+        span.textContent = `${label}: ${res.elapsedDays}d (${res.elapsedClockHours}h)`;
+        track.appendChild(span);
+
+        // Highlight dead time penalty if any
+        if (res.deadTimeHours > 0) {
+          const deadSpan = document.createElement("div");
+          deadSpan.className = "timeline-dead-time";
+          deadSpan.style.left = `${startPct}%`;
+          deadSpan.style.width = `${totalSpanPct}%`;
+          track.appendChild(deadSpan);
+        }
+      }
+
+      fillTrack("syncLaneOffice", off, "var(--accent-blue)", "Office Span");
+      fillTrack("syncLaneSite", site, "var(--solar-orange)", "Site Span");
+      fillTrack("syncLaneCuring", cure, "var(--curing-green)", "Curing Span");
+    }
+
+    /* =========================================================================
+       RELATIONSHIP HANDOFF SIMULATOR
+       ========================================================================= */
+
+    function recalculateHandoff() {
+      const predCal = document.getElementById("handoffPredCal").value;
+      const predDur = parseInt(document.getElementById("handoffPredDur").value, 10) || 20;
+      const lagHours = parseInt(document.getElementById("handoffLagInput").value, 10) || 0;
+      const succCal = document.getElementById("handoffSuccCal").value;
+      const succDur = parseInt(document.getElementById("handoffSuccDur").value, 10) || 16;
+
+      document.getElementById("handoffLagDisplay").textContent = `${lagHours}h`;
+
+      // 1. Walk predecessor starting from configured start time
+      const predConfig = { ...currentConfig, workDuration: predDur };
+      const predWalk = walkCalendar(predCal, predConfig);
+      const predFinishAbs = predWalk.finishAbsHour;
+
+      // 2. Add Lag
+      // In P6, Lag calendar is assigned (commonly predecessor or successor). Here we walk lag forward.
+      const afterLagAbs = predFinishAbs + lagHours;
+
+      // 3. Find Successor Earliest Start
+      // Successor CANNOT start until its calendar has a working hour!
+      let succStartAbs = afterLagAbs;
+      const succConfig = { ...currentConfig, workDuration: succDur };
+      
+      while (!isHourWorking(succCal, succStartAbs, succConfig) && succStartAbs < 336) {
+        succStartAbs++;
+      }
+
+      // 4. Walk successor
+      const succWalkConfig = { ...succConfig, startHour: succStartAbs };
+      const succWalk = walkCalendar(succCal, succWalkConfig);
+
+      // Compute Dead Time Gap between Predecessor finish and Successor start
+      const handoffDeadTime = succStartAbs - predFinishAbs - lagHours;
+
+      // Render Handoff Result
+      const resultBox = document.getElementById("handoffResultBox");
+      
+      let alertClass = "safe";
+      let alertTitle = "Seamless Continuous Handoff";
+      if (handoffDeadTime > 24) {
+        alertClass = "critical";
+        alertTitle = "Catastrophic Cross-Calendar Freeze!";
+      } else if (handoffDeadTime > 0) {
+        alertClass = "warning";
+        alertTitle = "Weekend / Non-Working Shift Gap";
+      }
+
+      resultBox.innerHTML = `
+        <div class="handoff-alert ${alertClass}">
+          <div>
+            <div style="font-weight: 700; margin-bottom: 2px;">${alertTitle}</div>
+            <div>
+              Predecessor finishes at <strong>${formatTimestamp(predFinishAbs, currentConfig)}</strong>.
+              ${lagHours > 0 ? `After ${lagHours}h lag, target start is ${formatTimestamp(afterLagAbs, currentConfig)}.` : ''}
+              Successor on <em>${succCal.toUpperCase()}</em> calendar is frozen until <strong>${formatTimestamp(succStartAbs, currentConfig)}</strong>!
+              <span style="color: ${handoffDeadTime > 0 ? 'var(--critical-red)' : 'var(--safe-green)'}; font-weight: 700;">
+                (Total Handoff Dead Time = ${handoffDeadTime} Clock Hours).
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
+          <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Task 1 Finish Timestamp</div>
+            <div style="font-family: var(--font-mono); font-weight: 700; color: #ffffff; margin-top: 2px;">
+              ${formatTimestamp(predFinishAbs, currentConfig)}
+            </div>
+          </div>
+          <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Task 2 Actual Start</div>
+            <div style="font-family: var(--font-mono); font-weight: 700; color: #ffffff; margin-top: 2px;">
+              ${formatTimestamp(succStartAbs, currentConfig)}
+            </div>
+          </div>
+          <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Task 2 Final Completion</div>
+            <div style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-blue); margin-top: 2px;">
+              ${formatTimestamp(succWalk.finishAbsHour, currentConfig)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
