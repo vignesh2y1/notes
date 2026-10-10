@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Primavera P6 .XER Parser & Relational Schema Workbench</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-amber: #d29922;
+      --accent-purple: #bc8cff;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    h1 { font-size: 24px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+    textarea {
+      width: 100%;
+      height: 140px;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      color: #79c0ff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      resize: vertical;
+    }
+    select, button {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: #fff;
+      font-weight: 600;
+      margin-top: 10px;
+      padding: 10px 16px;
+    }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary {
+      background: #21262d;
+      border-color: var(--border);
+      color: #c9d1d9;
+      font-weight: 500;
+      margin-top: 6px;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    .table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .table-item {
+      padding: 8px 12px;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      transition: all 0.2s;
+    }
+    .table-item:hover, .table-item.active {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+      color: #fff;
+    }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-box {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .metric-value { font-size: 20px; font-weight: 700; color: #fff; font-family: var(--font-mono); }
+    .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+    .table-container {
+      overflow-x: auto;
+      max-height: 480px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0d1117;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      background: #161b22;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+      color: var(--text);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      width: auto;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 8px 16px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Primavera P6 .XER Parser & Schema Workbench</h1>
+      <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+        High-Performance TSV Tokenizer, Relational Schema Normalizer & SQL DDL Exporter
+      </p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge">Oracle Primavera P6 XER 8.0 - 24.12</span>
+      <span class="badge" style="color: var(--accent-green); border-color: rgba(63, 185, 80, 0.3); background: rgba(63, 185, 80, 0.15);">RFC Tab-Delimited</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Sidebar / Inputs -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <span>Input .XER File Stream</span>
+          <span style="font-size: 11px; color: var(--text-muted);">Paste or Upload</span>
+        </div>
+
+        <div class="form-group">
+          <label>Raw .XER Content</label>
+          <textarea id="xerInput" placeholder="Paste .XER content here..."></textarea>
+        </div>
+
+        <button class="btn-primary" onclick="parseXER()">Parse .XER Stream</button>
+        <button class="btn-secondary" onclick="loadSampleSurya()">Load Surya 100MW Sample .XER</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Discovered Tables</span>
+          <span id="tableCountBadge" style="font-size: 11px; color: var(--accent);">0 Tables</span>
+        </div>
+        <div class="table-list" id="tableList">
+          <div style="font-size: 12px; color: var(--text-muted); padding: 8px;">No tables loaded yet.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Export Tools</div>
+        <button class="btn-secondary" onclick="exportToJSON()">Export Active Table to JSON</button>
+        <button class="btn-secondary" onclick="exportToSQL()">Generate PostgreSQL INSERTs</button>
+      </div>
+    </div>
+
+    <!-- Main Data Viewer -->
+    <div>
+      <div class="metrics-row">
+        <div class="metric-box">
+          <div class="metric-value" id="valProjects">0</div>
+          <div class="metric-label">Projects</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valWBS">0</div>
+          <div class="metric-label">WBS Elements</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valActivities" style="color: var(--accent);">0</div>
+          <div class="metric-label">Activities (TASK)</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valRels">0</div>
+          <div class="metric-label">Relationships</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span id="activeTableHeading">Table: None</span>
+          <span id="activeRowCount" style="font-size: 11px; color: var(--text-muted);">0 rows</span>
+        </div>
+
+        <div class="table-container">
+          <table id="dataTable">
+            <thead id="dataThead">
+              <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody id="dataTbody">
+              <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 40px;">Load or parse an .XER file to inspect relational records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Sample Surya 100MW Solar IPP Project .XER
+    const sampleSuryaXER = `ERMHDR\t8.0\t2026-10-10\tSurya 100MW Solar IPP Project\tPrimavera Systems, Inc.
+%T\tPROJECT
+%F\tproj_id\tproj_short_name\tproj_name\tplan_start_date\tplan_end_date\tstatus_code
+%R\t1001\tSURYA-100MW\tSurya 100MW Solar IPP Project (Rajasthan)\t2026-11-01 08:00\t2027-05-31 17:00\tActive
+%T\tPROJWBS
+%F\twbs_id\tproj_id\tparent_wbs_id\twbs_short_name\twbs_name\tseq_num
+%R\t2001\t1001\t\t1\tSurya 100MW Solar Plant EPC\t1
+%R\t2002\t1001\t2001\t1.1\tEngineering & Permits\t1
+%R\t2003\t1001\t2001\t1.2\tProcurement & Logistics\t2
+%R\t2004\t1001\t2001\t1.3\tCivil & Structural Works\t3
+%R\t2005\t1001\t2001\t1.4\tElectrical & Transmission\t4
+%R\t2006\t1001\t2001\t1.5\tCommissioning & COD\t5
+%T\tTASK
+%F\ttask_id\tproj_id\twbs_id\ttask_code\ttask_name\ttarget_drtn_hr_cnt\tact_start_date\tact_end_date\ttotal_float_hr_cnt\tstatus_code
+%R\t3001\t1001\t2002\tACT-101\tGeotechnical Boreholes & Soil Testing\t80\t2026-11-01 08:00\t2026-11-10 17:00\t0\tCompleted
+%R\t3002\t1001\t2003\tACT-201\tPV Module Delivery (Batch 1 - 25MW)\t160\t2026-11-11 08:00\t2026-11-30 17:00\t40\tIn-Progress
+%R\t3003\t1001\t2004\tACT-301\tPile Driving & Foundation Rigs (Array 1)\t120\t2026-11-15 08:00\t2026-11-28 17:00\t0\tIn-Progress
+%R\t3004\t1001\t2004\tACT-302\tSingle-Axis Tracker Structure Mounting\t160\t2026-11-29 08:00\t2026-12-18 17:00\t0\tNot-Started
+%R\t3005\t1001\t2005\tACT-401\tInverter Transformer Station Installation\t80\t2026-12-01 08:00\t2026-12-10 17:00\t80\tNot-Started
+%R\t3006\t1001\t2005\tACT-402\t220kV Switchyard & GIS Commissioning\t120\t2026-12-11 08:00\t2026-12-24 17:00\t0\tNot-Started
+%R\t3007\t1001\t2006\tACT-501\tGrid Synchronization & Commercial COD\t40\t2026-12-25 08:00\t2026-12-30 17:00\t0\tNot-Started
+%T\tTASKPRED
+%F\ttask_pred_id\ttask_id\tpred_task_id\tpred_type\tlag_hr_cnt
+%R\t4001\t3002\t3001\tPR_FS\t0
+%R\t4002\t3003\t3001\tPR_FS\t0
+%R\t4003\t3004\t3003\tPR_FS\t0
+%R\t4004\t3006\t3005\tPR_FS\t0
+%R\t4005\t3007\t3004\tPR_FS\t0
+%R\t4006\t3007\t3006\tPR_FS\t0
+%T\tRSRC
+%F\trsrc_id\trsrc_short_name\trsrc_name\trsrc_type\tdef_cost_qty_link_flag
+%R\t5001\tRIG-HYD-01\tHydraulic Piling Rig Machine\tRT_Equip\tY
+%R\t5002\tELEC-CREW\tCertified High-Voltage Substation Crew\tRT_Labor\tY
+%R\t5003\tSOLAR-MOD\tTier-1 580W Bifacial TOPCon Modules\tRT_Mat\tN
+%T\tTASKRSRC
+%F\ttask_rsrc_id\ttask_id\trsrc_id\ttarget_qty\tact_qty\tremain_qty
+%R\t6001\t3003\t5001\t120\t40\t80
+%R\t6002\t3006\t5002\t240\t0\t240
+%R\t6003\t3002\t5003\t43100\t20000\t23100
+%E`;
+
+    let parsedTables = {};
+    let activeTable = null;
+
+    function loadSampleSurya() {
+      document.getElementById('xerInput').value = sampleSuryaXER;
+      parseXER();
+    }
+
+    function parseXER() {
+      const text = document.getElementById('xerInput').value;
+      if (!text.trim()) {
+        alert("Please paste or load .XER data first.");
+        return;
+      }
+
+      parsedTables = {};
+      const lines = text.split(/\r?\n/);
+
+      let currentTable = null;
+      let currentFields = [];
+
+      for (let line of lines) {
+        if (!line.trim()) continue;
+        const tokens = line.split('\t');
+        const marker = tokens[0].trim();
+
+        if (marker === '%T') {
+          currentTable = tokens[1] ? tokens[1].trim() : "UNKNOWN";
+          parsedTables[currentTable] = {
+            fields: [],
+            rows: []
+          };
+          currentFields = [];
+        } else if (marker === '%F' && currentTable) {
+          currentFields = tokens.slice(1).map(f => f.trim());
+          parsedTables[currentTable].fields = currentFields;
+        } else if (marker === '%R' && currentTable) {
+          const rowData = tokens.slice(1);
+          const rowObj = {};
+          currentFields.forEach((f, idx) => {
+            rowObj[f] = rowData[idx] !== undefined ? rowData[idx] : "";
+          });
+          parsedTables[currentTable].rows.push(rowObj);
+        } else if (marker === '%E') {
+          break; // End of file
+        }
+      }
+
+      // Update UI
+      renderTableList();
+      updateMetrics();
+
+      const tableNames = Object.keys(parsedTables);
+      if (tableNames.includes('TASK')) {
+        selectTable('TASK');
+      } else if (tableNames.length > 0) {
+        selectTable(tableNames[0]);
+      }
+    }
+
+    function renderTableList() {
+      const listEl = document.getElementById('tableList');
+      listEl.innerHTML = '';
+      const tableNames = Object.keys(parsedTables);
+      document.getElementById('tableCountBadge').innerText = tableNames.length + ' Tables';
+
+      tableNames.forEach(tName => {
+        const item = document.createElement('div');
+        item.className = 'table-item' + (tName === activeTable ? ' active' : '');
+        item.onclick = () => selectTable(tName);
+        item.innerHTML = `
+          <span>${tName}</span>
+          <span style="color: var(--text-muted);">${parsedTables[tName].rows.length} rows</span>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function selectTable(name) {
+      activeTable = name;
+      renderTableList();
+
+      const data = parsedTables[name];
+      document.getElementById('activeTableHeading').innerText = 'Table: ' + name;
+      document.getElementById('activeRowCount').innerText = data.rows.length + ' rows';
+
+      const thead = document.getElementById('dataThead');
+      thead.innerHTML = '';
+      const trHead = document.createElement('tr');
+      data.fields.forEach(f => {
+        const th = document.createElement('th');
+        th.innerText = f;
+        trHead.appendChild(th);
+      });
+      thead.appendChild(trHead);
+
+      const tbody = document.getElementById('dataTbody');
+      tbody.innerHTML = '';
+
+      if (data.rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="' + data.fields.length + '" style="text-align: center; color: var(--text-muted);">No records in table.</td></tr>';
+        return;
+      }
+
+      data.rows.forEach(r => {
+        const tr = document.createElement('tr');
+        data.fields.forEach(f => {
+          const td = document.createElement('td');
+          td.innerText = r[f];
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateMetrics() {
+      const p = parsedTables['PROJECT'] ? parsedTables['PROJECT'].rows.length : 0;
+      const w = parsedTables['PROJWBS'] ? parsedTables['PROJWBS'].rows.length : 0;
+      const t = parsedTables['TASK'] ? parsedTables['TASK'].rows.length : 0;
+      const r = parsedTables['TASKPRED'] ? parsedTables['TASKPRED'].rows.length : 0;
+
+      document.getElementById('valProjects').innerText = p;
+      document.getElementById('valWBS').innerText = w;
+      document.getElementById('valActivities').innerText = t;
+      document.getElementById('valRels').innerText = r;
+    }
+
+    function exportToJSON() {
+      if (!activeTable || !parsedTables[activeTable]) {
+        alert("No table active to export.");
+        return;
+      }
+      const jsonStr = JSON.stringify(parsedTables[activeTable].rows, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = activeTable.toLowerCase() + ".json";
+      a.click();
+    }
+
+    function exportToSQL() {
+      if (!activeTable || !parsedTables[activeTable]) {
+        alert("No table active to export.");
+        return;
+      }
+      const data = parsedTables[activeTable];
+      let sql = `-- PostgreSQL DDL Inserts for ${activeTable}\n`;
+      data.rows.forEach(r => {
+        const cols = data.fields.join(", ");
+        const vals = data.fields.map(f => {
+          let v = r[f] || "";
+          return "'" + v.replace(/'/g, "''") + "'";
+        }).join(", ");
+        sql += `INSERT INTO ${activeTable.toLowerCase()} (${cols}) VALUES (${vals});\n`;
+      });
+
+      const blob = new Blob([sql], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = activeTable.toLowerCase() + "_inserts.sql";
+      a.click();
+    }
+
+    window.onload = loadSampleSurya;
+  </script>
+</body>
+</html>

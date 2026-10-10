@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Primavera P6 Resource Histogram & Leveling Simulator</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-amber: #d29922;
+      --accent-purple: #bc8cff;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    h1 { font-size: 24px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+    .badge-amber {
+      background: rgba(210, 153, 34, 0.15);
+      color: var(--accent-amber);
+      border-color: rgba(210, 153, 34, 0.3);
+    }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
+    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+    select, input, button {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+    .btn-primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      padding: 10px 16px;
+    }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary {
+      background: #21262d;
+      border-color: var(--border);
+      color: #c9d1d9;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-box {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .metric-value { font-size: 20px; font-weight: 700; color: #fff; font-family: var(--font-mono); }
+    .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+    .chart-container {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    canvas { width: 100%; height: 260px; display: block; }
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0d1117;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      background: #161b22;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-ok { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+    .status-clash { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+    .status-delayed { background: rgba(210, 153, 34, 0.15); color: var(--accent-amber); }
+    .mono { font-family: var(--font-mono); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Primavera P6 Resource Leveler & Histogram Simulator</h1>
+      <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+        Interactive RCPSP Parallel Schedule Generation Scheme & Burgess-Killebrew Smoothing Engine
+      </p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge">Case Study: Surya 100MW Solar</span>
+      <span class="badge badge-amber" id="overallocationBadge">Overallocation Detected</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Controls Column -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <span>Leveling Engine Parameters</span>
+          <span style="font-size: 11px; color: var(--text-muted);">P6 Tools > Level</span>
+        </div>
+
+        <div class="form-group">
+          <label>Resource Limit Capacity (C)</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="range" id="capacitySlider" min="1" max="4" value="1" style="flex: 1;" oninput="updateCapacity(this.value)">
+            <span id="capacityVal" class="mono" style="font-weight: bold; width: 40px; text-align: right;">1 unit</span>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted);">e.g. 1 Hydraulic Pile Driver Rig</span>
+        </div>
+
+        <div class="form-group">
+          <label>Priority Heuristic Rule</label>
+          <select id="priorityRule">
+            <option value="MIN_TF">Min Total Float (P6 Default)</option>
+            <option value="EARLY_START">Early Start Date (FIFO)</option>
+            <option value="LATE_START">Late Start Date</option>
+            <option value="USER_PRIORITY">User Assigned Priority</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Float Constraint Policy</label>
+          <select id="floatPolicy">
+            <option value="ALLOW_EXPAND">Allow project finish date expansion</option>
+            <option value="WITHIN_FLOAT">Level only within Total Float (Hard deadline)</option>
+          </select>
+        </div>
+
+        <button class="btn-primary" onclick="runLeveling()">Run Leveling Heuristic</button>
+        <button class="btn-secondary" onclick="resetToCPM()">Reset to Unconstrained CPM</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Heuristic Complexity Summary</div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+          <p><strong style="color: var(--text);">Parallel SGS:</strong> Simulates time clock $t = 0, 1, 2 \dots$, sorting eligible activities by priority and allocating capacity up to $C_k$.</p>
+          <p style="margin-top: 8px;"><strong style="color: var(--text);">Burgess-Killebrew:</strong> Minimizes $\sum (\text{Usage}_t)^2$ to smooth utilization peaks and valleys.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualization Column -->
+    <div>
+      <div class="metrics-row">
+        <div class="metric-box">
+          <div class="metric-value" id="valMakespan">4 d</div>
+          <div class="metric-label">Project Makespan</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valPeakDemand" style="color: var(--accent-red);">4</div>
+          <div class="metric-label">Peak Daily Demand</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valOverAllocDays" style="color: var(--accent-red);">3</div>
+          <div class="metric-label">Over-allocated Days</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="valSmoothnessScore">65</div>
+          <div class="metric-label">Sum of Squares (S)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Daily Resource Utilization Histogram</span>
+          <span style="font-size: 11px; color: var(--text-muted);">Red line = Capacity Limit</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="histogramCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Activity Schedule & Float Impact Table</div>
+        <div class="table-container">
+          <table id="activityTable">
+            <thead>
+              <tr>
+                <th>Activity ID</th>
+                <th>Description</th>
+                <th>Dur</th>
+                <th>Demand</th>
+                <th>CPM [ES, EF]</th>
+                <th>Scheduled [S, F]</th>
+                <th>Orig TF</th>
+                <th>Leveled TF</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="activityTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Initial Dataset (Surya 100MW Solar IPP Piling Rig)
+    const initialActivities = [
+      { id: "ACT-A", name: "Block 1 Piling (Central Sub)", dur: 4, dem: 1, es: 0, ef: 4, ls: 0, lf: 4, tf: 0, prio: 1 },
+      { id: "ACT-B", name: "Block 2 Piling (Inverter 1)",  dur: 3, dem: 1, es: 0, ef: 3, ls: 2, lf: 5, tf: 2, prio: 3 },
+      { id: "ACT-C", name: "Block 3 Piling (Inverter 2)",  dur: 2, dem: 1, es: 0, ef: 2, ls: 1, lf: 3, tf: 1, prio: 2 },
+      { id: "ACT-D", name: "Block 4 Piling (Tracker Test)", dur: 3, dem: 1, es: 0, ef: 3, ls: 5, lf: 8, tf: 5, prio: 4 }
+    ];
+
+    let activities = JSON.parse(JSON.stringify(initialActivities));
+    let capacity = 1;
+    let isLeveled = false;
+
+    function init() {
+      resetToCPM();
+    }
+
+    function updateCapacity(val) {
+      capacity = parseInt(val, 10);
+      document.getElementById('capacityVal').innerText = capacity + ' unit' + (capacity > 1 ? 's' : '');
+      if (isLeveled) {
+        runLeveling();
+      } else {
+        render();
+      }
+    }
+
+    function resetToCPM() {
+      isLeveled = false;
+      activities.forEach(a => {
+        a.schedStart = a.es;
+        a.schedFinish = a.ef;
+        a.leveledTF = a.tf;
+        a.delayed = false;
+      });
+      render();
+    }
+
+    function runLeveling() {
+      isLeveled = true;
+      const rule = document.getElementById('priorityRule').value;
+      const policy = document.getElementById('floatPolicy').value;
+
+      // Reset scheduled state
+      activities.forEach(a => {
+        a.scheduled = false;
+        a.schedStart = 0;
+        a.schedFinish = 0;
+      });
+
+      let clock = 0;
+      let scheduledCount = 0;
+      const total = activities.length;
+      const dailyUsage = {};
+
+      while (scheduledCount < total && clock < 50) {
+        // Find eligible activities: unscheduled and ES <= clock
+        let eligible = activities.filter(a => !a.scheduled && a.es <= clock);
+
+        // Sort by chosen priority rule
+        eligible.sort((a, b) => {
+          if (rule === 'MIN_TF') {
+            if (a.tf !== b.tf) return a.tf - b.tf;
+            return a.es - b.es;
+          } else if (rule === 'EARLY_START') {
+            if (a.es !== b.es) return a.es - b.es;
+            return a.tf - b.tf;
+          } else if (rule === 'LATE_START') {
+            if (a.ls !== b.ls) return a.ls - b.ls;
+            return a.tf - b.tf;
+          } else if (rule === 'USER_PRIORITY') {
+            return a.prio - b.prio;
+          }
+          return a.id.localeCompare(b.id);
+        });
+
+        // Try to schedule
+        for (let act of eligible) {
+          // Check if capacity fits across [clock, clock + dur)
+          let fits = true;
+          for (let d = clock; d < clock + act.dur; d++) {
+            let u = dailyUsage[d] || 0;
+            if (u + act.dem > capacity) {
+              fits = false;
+              break;
+            }
+          }
+
+          if (fits) {
+            // Allocate
+            for (let d = clock; d < clock + act.dur; d++) {
+              dailyUsage[d] = (dailyUsage[d] || 0) + act.dem;
+            }
+            act.schedStart = clock;
+            act.schedFinish = clock + act.dur;
+            act.scheduled = true;
+            act.delayed = (act.schedStart > act.es);
+            scheduledCount++;
+          }
+        }
+
+        clock++;
+      }
+
+      // Recompute leveled float
+      const origCPMDeadline = 4;
+      activities.forEach(a => {
+        a.leveledTF = a.tf - (a.schedStart - a.es);
+      });
+
+      render();
+    }
+
+    function render() {
+      // Calculate daily demand profile
+      let maxDay = 0;
+      activities.forEach(a => {
+        if (a.schedFinish > maxDay) maxDay = a.schedFinish;
+      });
+      maxDay = Math.max(maxDay + 1, 14);
+
+      const dailyDemand = new Array(maxDay).fill(0);
+      activities.forEach(a => {
+        for (let d = a.schedStart; d < a.schedFinish; d++) {
+          if (d < maxDay) dailyDemand[d] += a.dem;
+        }
+      });
+
+      // Calculate Metrics
+      let peakDemand = 0;
+      let overAllocDays = 0;
+      let sumSquares = 0;
+      let makespan = 0;
+
+      activities.forEach(a => {
+        if (a.schedFinish > makespan) makespan = a.schedFinish;
+      });
+
+      for (let d = 0; d < maxDay; d++) {
+        let dem = dailyDemand[d];
+        if (dem > peakDemand) peakDemand = dem;
+        if (dem > capacity) overAllocDays++;
+        sumSquares += (dem * dem);
+      }
+
+      document.getElementById('valMakespan').innerText = makespan + ' d';
+      document.getElementById('valPeakDemand').innerText = peakDemand;
+      document.getElementById('valPeakDemand').style.color = (peakDemand > capacity) ? 'var(--accent-red)' : 'var(--accent-green)';
+      document.getElementById('valOverAllocDays').innerText = overAllocDays;
+      document.getElementById('valOverAllocDays').style.color = (overAllocDays > 0) ? 'var(--accent-red)' : 'var(--accent-green)';
+      document.getElementById('valSmoothnessScore').innerText = sumSquares;
+
+      const badge = document.getElementById('overallocationBadge');
+      if (overAllocDays > 0) {
+        badge.innerText = 'Over-allocation Detected (' + overAllocDays + ' days)';
+        badge.className = 'badge badge-amber';
+        badge.style.color = 'var(--accent-red)';
+      } else {
+        badge.innerText = 'Schedule Perfectly Leveled';
+        badge.className = 'badge';
+        badge.style.color = 'var(--accent-green)';
+      }
+
+      // Render Table
+      const tbody = document.getElementById('activityTbody');
+      tbody.innerHTML = '';
+      activities.forEach(a => {
+        let statusBadge = '<span class="status-pill status-ok">On Target</span>';
+        if (!isLeveled && a.es === 0 && capacity < 4) {
+          statusBadge = '<span class="status-pill status-clash">Clashing</span>';
+        } else if (isLeveled && a.delayed) {
+          statusBadge = '<span class="status-pill status-delayed">Delayed (' + (a.schedStart - a.es) + 'd)</span>';
+        }
+
+        let tfColor = (a.leveledTF < 0) ? 'color: var(--accent-red); font-weight: bold;' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono"><strong>${a.id}</strong></td>
+          <td>${a.name}</td>
+          <td class="mono">${a.dur}d</td>
+          <td class="mono">${a.dem}u</td>
+          <td class="mono">[${a.es}, ${a.ef}]</td>
+          <td class="mono">[${a.schedStart}, ${a.schedFinish}]</td>
+          <td class="mono">${a.tf}d</td>
+          <td class="mono" style="${tfColor}">${a.leveledTF}d</td>
+          <td>${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Draw Canvas Chart
+      drawHistogram(dailyDemand, maxDay);
+    }
+
+    function drawHistogram(dailyDemand, maxDay) {
+      const canvas = document.getElementById('histogramCanvas');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+
+      const w = canvas.parentElement.clientWidth;
+      const h = 260;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 40;
+      const padR = 20;
+      const padT = 20;
+      const padB = 30;
+
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      const maxVal = Math.max(capacity + 2, 5);
+      const daysCount = 14;
+      const colW = (plotW / daysCount);
+
+      // Draw Gridlines & Y-labels
+      ctx.strokeStyle = '#21262d';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'right';
+
+      for (let v = 0; v <= maxVal; v++) {
+        let y = padT + plotH - (v / maxVal) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+        ctx.fillText(v, padL - 8, y + 4);
+      }
+
+      // Draw Bars
+      for (let d = 0; d < daysCount; d++) {
+        let val = dailyDemand[d] || 0;
+        let x = padL + d * colW + colW * 0.15;
+        let barWidth = colW * 0.7;
+        let barH = (val / maxVal) * plotH;
+        let y = padT + plotH - barH;
+
+        if (val > 0) {
+          if (val > capacity) {
+            ctx.fillStyle = '#f85149';
+          } else {
+            ctx.fillStyle = '#58a6ff';
+          }
+          ctx.fillRect(x, y, barWidth, barH);
+        }
+
+        // X-label
+        ctx.fillStyle = '#8b949e';
+        ctx.textAlign = 'center';
+        ctx.fillText('D' + d, padL + d * colW + colW * 0.5, h - 10);
+      }
+
+      // Draw Resource Capacity Red Limit Line
+      let capY = padT + plotH - (capacity / maxVal) * plotH;
+      ctx.strokeStyle = '#f85149';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padL, capY);
+      ctx.lineTo(w - padR, capY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#f85149';
+      ctx.textAlign = 'left';
+      ctx.fillText('Capacity Limit: ' + capacity, padL + 6, capY - 6);
+    }
+
+    window.addEventListener('resize', () => render());
+    window.onload = init;
+  </script>
+</body>
+</html>

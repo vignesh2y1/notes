@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surya 100MW Solar IPP — Earned Value Management & S-Curve Simulator</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --border-bright: #484f58;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-dim: #6e7681;
+
+      --accent-blue: #58a6ff;
+      --accent-blue-bg: rgba(88, 166, 255, 0.12);
+      --solar-orange: #f0883e;
+      --solar-orange-bg: rgba(240, 136, 62, 0.15);
+      --safe-green: #3fb950;
+      --safe-green-bg: rgba(63, 185, 80, 0.15);
+      --critical-red: #f85149;
+      --critical-red-bg: rgba(248, 81, 73, 0.15);
+      --warning-yellow: #e3b341;
+      --warning-yellow-bg: rgba(227, 179, 65, 0.15);
+      --purple-accent: #bc8cff;
+      --purple-bg: rgba(188, 140, 255, 0.12);
+      --cyan-accent: #39c5bb;
+      --cyan-bg: rgba(57, 197, 187, 0.12);
+
+      --pv-color: #38bdf8;
+      --pv-late-color: #64748b;
+      --ev-color: #22c55e;
+      --ac-color: #f97316;
+
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      max-width: 1520px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(180deg, #161b22 0%, #11151c 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    .header-titles h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+    }
+
+    .badge-tag {
+      background: var(--accent-blue-bg);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-solar {
+      background: var(--solar-orange-bg);
+      border: 1px solid var(--solar-orange);
+      color: var(--solar-orange);
+    }
+
+    .badge-iso {
+      background: var(--purple-bg);
+      border: 1px solid var(--purple-accent);
+      color: var(--purple-accent);
+    }
+
+    .header-titles p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .currency-toggle {
+      display: flex;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      padding: 2px;
+    }
+
+    .currency-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+
+    .currency-btn.active {
+      background: var(--accent-blue);
+      color: #0d1117;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(88, 166, 255, 0.4);
+    }
+
+    /* Scenario Ribbon */
+    .scenario-ribbon {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .scenario-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .preset-btn:hover {
+      border-color: var(--border-bright);
+      background: #282e38;
+      transform: translateY(-1px);
+    }
+
+    .preset-btn.active {
+      background: var(--accent-blue-bg);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .preset-btn.danger.active {
+      background: var(--critical-red-bg);
+      border-color: var(--critical-red);
+      color: var(--critical-red);
+    }
+
+    .preset-btn.safe.active {
+      background: var(--safe-green-bg);
+      border-color: var(--safe-green);
+      color: var(--safe-green);
+    }
+
+    .preset-btn.warning.active {
+      background: var(--warning-yellow-bg);
+      border-color: var(--warning-yellow);
+      color: var(--warning-yellow);
+    }
+
+    /* Interactive Inputs Control Grid */
+    .controls-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .control-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .control-val-display {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .custom-range {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .custom-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(88, 166, 255, 0.6);
+      border: 2px solid #ffffff;
+      transition: transform 0.15s ease;
+    }
+
+    .custom-range::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .range-ev::-webkit-slider-thumb {
+      background: var(--ev-color);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+    }
+
+    .range-ac::-webkit-slider-thumb {
+      background: var(--ac-color);
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
+    }
+
+    .stepper-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .stepper-btn:hover {
+      border-color: var(--border-bright);
+      background: #30363d;
+    }
+
+    .dropdown-select {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: var(--font-main);
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .dropdown-select:hover, .dropdown-select:focus {
+      border-color: var(--accent-blue);
+    }
+
+    /* KPI Summary Row */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      transition: var(--transition);
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--border-color);
+    }
+
+    .kpi-card.pv-card::before { background: var(--pv-color); }
+    .kpi-card.ev-card::before { background: var(--ev-color); }
+    .kpi-card.ac-card::before { background: var(--ac-color); }
+    .kpi-card.cv-card::before { background: var(--purple-accent); }
+    .kpi-card.sv-card::before { background: var(--solar-orange); }
+    .kpi-card.eac-card::before { background: var(--cyan-accent); }
+
+    .kpi-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .kpi-card-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-card-subbadge {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+    }
+
+    .kpi-card-value {
+      font-family: var(--font-mono);
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-top: 2px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .kpi-delta {
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .text-safe { color: var(--safe-green) !important; }
+    .text-critical { color: var(--critical-red) !important; }
+    .text-warning { color: var(--warning-yellow) !important; }
+    .text-muted { color: var(--text-muted) !important; }
+
+    /* Main Dashboard Layout */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 18px;
+    }
+
+    @media (max-width: 1200px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Chart Card */
+    .chart-container-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-line {
+      width: 18px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-banana {
+      width: 16px;
+      height: 10px;
+      border-radius: 2px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px dashed var(--pv-color);
+    }
+
+    /* SVG Chart */
+    .svg-wrapper {
+      width: 100%;
+      height: 480px;
+      position: relative;
+    }
+
+    #scurve-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* Chart SVG elements */
+    .grid-line {
+      stroke: var(--border-color);
+      stroke-width: 1;
+      stroke-dasharray: 4, 4;
+    }
+
+    .axis-line {
+      stroke: var(--border-bright);
+      stroke-width: 1.5;
+    }
+
+    .axis-label {
+      fill: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .banana-envelope {
+      fill: url(#bananaGradient);
+      opacity: 0.45;
+      transition: var(--transition);
+    }
+
+    .curve-path {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .forecast-path {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 6, 6;
+      opacity: 0.8;
+    }
+
+    .data-date-line {
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-dasharray: 5, 5;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
+    }
+
+    .data-date-handle {
+      fill: #ffffff;
+      stroke: var(--bg-primary);
+      stroke-width: 2;
+      cursor: ew-resize;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8));
+    }
+
+    .variance-bracket {
+      stroke-width: 1.5;
+      stroke-linecap: round;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      background: rgba(22, 27, 34, 0.95);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      padding: 10px 14px;
+      pointer-events: none;
+      display: none;
+      font-size: 0.8rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      z-index: 50;
+      backdrop-filter: blur(8px);
+      min-width: 180px;
+    }
+
+    /* Side Panels: Gauges & Diagnostics */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .gauge-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .gauge-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .gauge-card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .gauges-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .speedo-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 6px;
+    }
+
+    .speedo-svg {
+      width: 120px;
+      height: 75px;
+    }
+
+    .speedo-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .speedo-val {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .speedo-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-critical {
+      background: var(--critical-red-bg);
+      color: var(--critical-red);
+      border: 1px solid var(--critical-red);
+    }
+
+    .badge-safe {
+      background: var(--safe-green-bg);
+      color: var(--safe-green);
+      border: 1px solid var(--safe-green);
+    }
+
+    .badge-warning {
+      background: var(--warning-yellow-bg);
+      color: var(--warning-yellow);
+      border: 1px solid var(--warning-yellow);
+    }
+
+    /* Diagnostics Card */
+    .diagnostic-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .diag-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quadrant-box {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .quadrant-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quadrant-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .metric-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .metric-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+
+    .metric-name {
+      color: var(--text-muted);
+    }
+
+    .metric-number {
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    /* Tabs Section */
+    .tabs-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .tabs-nav {
+      display: flex;
+      background: #11151c;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 12px;
+      gap: 4px;
+    }
+
+    .tab-nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-nav-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-nav-btn.active {
+      color: var(--accent-blue);
+      border-bottom-color: var(--accent-blue);
+      background: rgba(88, 166, 255, 0.05);
+    }
+
+    .tab-content {
+      padding: 20px;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Executive Briefing */
+    .briefing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .briefing-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .briefing-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .briefing-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .briefing-card p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .action-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .action-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-main);
+    }
+
+    .step-num {
+      background: var(--accent-blue-bg);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* Table View */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .evm-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    .evm-data-table th, .evm-data-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .evm-data-table th {
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+    }
+
+    .evm-data-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .evm-data-table tr.current-dd-row {
+      background: rgba(88, 166, 255, 0.08);
+      font-weight: 700;
+    }
+
+    .evm-data-table td:first-child, .evm-data-table th:first-child {
+      text-align: left;
+    }
+
+    /* Formula Reference Box */
+    .formula-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .formula-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .formula-card-name {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .formula-card-math {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      color: var(--accent-blue);
+      font-weight: 700;
+      background: #0d1117;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .formula-card-desc {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    footer {
+      text-align: center;
+      padding: 14px 0 8px 0;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+
+  <!-- Header -->
+  <header>
+    <div class="header-titles">
+      <h1>
+        Surya 100MW Solar IPP
+        <span class="badge-tag badge-solar">Inverter Plinths Package</span>
+        <span class="badge-tag">P6 EVM Engine</span>
+        <span class="badge-tag badge-iso">ISO 21508</span>
+      </h1>
+      <p>Interactive S-Curve, Banana Envelope & Earned Value Variance Diagnostic Simulator</p>
+    </div>
+    <div class="header-controls">
+      <div class="currency-toggle">
+        <button id="btn-inr" class="currency-btn active" onclick="setCurrency('INR')">₹ INR (Crores)</button>
+        <button id="btn-usd" class="currency-btn" onclick="setCurrency('USD')">$ USD (Millions)</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Scenario Ribbon -->
+  <div class="scenario-ribbon">
+    <span class="scenario-label">⚡ Preset Scenarios:</span>
+    <button class="preset-btn safe" data-scenario="onTrack" onclick="loadScenario('onTrack', this)">
+      <span>🟢</span> On Track (Baseline Target)
+    </button>
+    <button class="preset-btn danger active" data-scenario="disaster" onclick="loadScenario('disaster', this)">
+      <span>🚨</span> Disaster (Surya Month 6 Reality)
+    </button>
+    <button class="preset-btn safe" data-scenario="dream" onclick="loadScenario('dream', this)">
+      <span>🚀</span> Ahead of Schedule & Under Budget
+    </button>
+    <button class="preset-btn danger" data-scenario="cashBleed" onclick="loadScenario('cashBleed', this)">
+      <span>💸</span> The Cash-Bleed Trap (Stalled Site)
+    </button>
+    <button class="preset-btn warning" data-scenario="fastBurn" onclick="loadScenario('fastBurn', this)">
+      <span>⚡</span> Fast Burn (Buying Speed w/ Overtime)
+    </button>
+  </div>
+
+  <!-- Interactive Controls Panel -->
+  <div class="controls-panel">
+    <!-- Data Date Control -->
+    <div class="control-group">
+      <div class="control-header">
+        <span class="control-title">Data Date (Cutoff Month)</span>
+        <span id="disp-data-date" class="control-val-display">Month 6.0</span>
+      </div>
+      <div class="slider-row">
+        <button class="stepper-btn" onclick="stepMonth(-1)">−</button>
+        <input type="range" id="slider-month" class="custom-range" min="1" max="14" step="0.5" value="6" oninput="onMonthInput(this.value)">
+        <button class="stepper-btn" onclick="stepMonth(1)">+</button>
+      </div>
+    </div>
+
+    <!-- Physical Progress % Control -->
+    <div class="control-group">
+      <div class="control-header">
+        <span class="control-title">Physical Progress (% Complete)</span>
+        <span id="disp-progress" class="control-val-display">48.0% (24 Plinths)</span>
+      </div>
+      <div class="slider-row">
+        <button class="stepper-btn" onclick="stepProgress(-2)">−</button>
+        <input type="range" id="slider-progress" class="custom-range range-ev" min="0" max="100" step="1" value="48" oninput="onProgressInput(this.value)">
+        <button class="stepper-btn" onclick="stepProgress(2)">+</button>
+      </div>
+    </div>
+
+    <!-- Actual Cost Control -->
+    <div class="control-group">
+      <div class="control-header">
+        <span class="control-title">Actual Cost Incurred (AC)</span>
+        <span id="disp-ac" class="control-val-display">₹5.50 Cr ($660k)</span>
+      </div>
+      <div class="slider-row">
+        <button class="stepper-btn" onclick="stepAC(-0.25)">−</button>
+        <input type="range" id="slider-ac" class="custom-range range-ac" min="0" max="15" step="0.1" value="5.5" oninput="onACInput(this.value)">
+        <button class="stepper-btn" onclick="stepAC(0.25)">+</button>
+      </div>
+    </div>
+
+    <!-- Forecast Method Dropdown -->
+    <div class="control-group">
+      <div class="control-header">
+        <span class="control-title">EAC Forecasting Method</span>
+        <span id="disp-forecast-rule" class="control-val-display text-muted">Typical CPI</span>
+      </div>
+      <select id="select-eac-method" class="dropdown-select" onchange="onEACMethodChange(this.value)">
+        <option value="typical" selected>Case 1: Typical Performance (BAC / CPI)</option>
+        <option value="atypical">Case 2: Atypical One-off Blip [AC + (BAC - EV)]</option>
+        <option value="combined">Case 3: Combined Factor [AC + (BAC - EV)/(CPI × SPI)]</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI Grid -->
+  <div class="kpi-grid">
+    <!-- PV -->
+    <div class="kpi-card pv-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Planned Value (PV)</span>
+        <span id="kpi-pv-pct" class="kpi-card-subbadge">60.0% Plan</span>
+      </div>
+      <div id="kpi-pv-val" class="kpi-card-value">₹6.00 Cr</div>
+      <div class="kpi-delta text-muted">
+        <span>Target: 30 of 50 Foundations</span>
+      </div>
+    </div>
+
+    <!-- EV -->
+    <div class="kpi-card ev-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Earned Value (EV)</span>
+        <span id="kpi-ev-pct" class="kpi-card-subbadge">48.0% Built</span>
+      </div>
+      <div id="kpi-ev-val" class="kpi-card-value text-safe">₹4.80 Cr</div>
+      <div class="kpi-delta text-muted">
+        <span id="kpi-ev-plinths">Physical: 24 Foundations Cast</span>
+      </div>
+    </div>
+
+    <!-- AC -->
+    <div class="kpi-card ac-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Actual Cost (AC)</span>
+        <span id="kpi-ac-pct" class="kpi-card-subbadge">55.0% BAC Spent</span>
+      </div>
+      <div id="kpi-ac-val" class="kpi-card-value" style="color: var(--solar-orange);">₹5.50 Cr</div>
+      <div class="kpi-delta text-muted">
+        <span id="kpi-unit-cost">₹22.92L / foundation</span>
+      </div>
+    </div>
+
+    <!-- CV -->
+    <div class="kpi-card cv-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Cost Variance (CV)</span>
+        <span id="kpi-cv-badge" class="kpi-card-subbadge badge-critical">Over Budget</span>
+      </div>
+      <div id="kpi-cv-val" class="kpi-card-value text-critical">-₹0.70 Cr</div>
+      <div id="kpi-cv-sub" class="kpi-delta text-critical">
+        <span>▼ ₹70 Lakhs Cash Overrun</span>
+      </div>
+    </div>
+
+    <!-- SV -->
+    <div class="kpi-card sv-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Schedule Variance (SV)</span>
+        <span id="kpi-sv-badge" class="kpi-card-subbadge badge-critical">Behind Plan</span>
+      </div>
+      <div id="kpi-sv-val" class="kpi-card-value text-critical">-₹1.20 Cr</div>
+      <div id="kpi-sv-sub" class="kpi-delta text-critical">
+        <span>▼ Missing 6 Foundations</span>
+      </div>
+    </div>
+
+    <!-- EAC & VAC -->
+    <div class="kpi-card eac-card">
+      <div class="kpi-card-header">
+        <span class="kpi-card-label">Forecast (EAC / VAC)</span>
+        <span id="kpi-vac-badge" class="kpi-card-subbadge badge-critical">Breach</span>
+      </div>
+      <div id="kpi-eac-val" class="kpi-card-value" style="color: var(--cyan-accent);">₹11.46 Cr</div>
+      <div id="kpi-vac-sub" class="kpi-delta text-critical">
+        <span>VAC: -₹1.46 Cr Overrun</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Layout -->
+  <div class="dashboard-layout">
+
+    <!-- S-Curve Chart -->
+    <div class="chart-container-card">
+      <div class="chart-header">
+        <div class="chart-legend">
+          <div class="legend-item" title="Early Planned Value Baseline">
+            <span class="legend-line" style="background: var(--pv-color);"></span>
+            <span>PV (Early Baseline)</span>
+          </div>
+          <div class="legend-item" title="Late Planned Value Baseline">
+            <span class="legend-line" style="background: var(--pv-late-color); stroke-dasharray: 2,2;"></span>
+            <span>PV (Late Baseline)</span>
+          </div>
+          <div class="legend-item" title="The Float Window Envelope">
+            <span class="legend-banana"></span>
+            <span>Banana Envelope</span>
+          </div>
+          <div class="legend-item" title="Physical Earned Value">
+            <span class="legend-dot" style="background: var(--ev-color);"></span>
+            <span>EV (Earned)</span>
+          </div>
+          <div class="legend-item" title="Incurred Actual Cost">
+            <span class="legend-dot" style="background: var(--ac-color);"></span>
+            <span>AC (Actual Cost)</span>
+          </div>
+          <div class="legend-item" title="Data Date Marker">
+            <span class="legend-line" style="background: #ffffff; border-top: 1px dashed #fff;"></span>
+            <span>Data Date (Status)</span>
+          </div>
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">
+          BAC = ₹10.00 Cr | 10 Months Baseline
+        </div>
+      </div>
+
+      <!-- SVG Drawing Surface -->
+      <div class="svg-wrapper" id="svg-container">
+        <svg id="scurve-svg" viewBox="0 0 920 460" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="bananaGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#64748b" stop-opacity="0.08"/>
+            </linearGradient>
+
+            <filter id="glow-ev" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+
+            <filter id="glow-ac" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <!-- Chart Background & Grid (Rendered via JS) -->
+          <g id="grid-layer"></g>
+
+          <!-- Banana Envelope Area -->
+          <path id="banana-path" class="banana-envelope" d="" />
+
+          <!-- PV Curves -->
+          <path id="pv-late-curve" class="curve-path" stroke="var(--pv-late-color)" stroke-width="1.8" stroke-dasharray="4,3" d="" />
+          <path id="pv-early-curve" class="curve-path" stroke="var(--pv-color)" stroke-width="2.5" d="" />
+
+          <!-- Forecast Curves (Dashed) -->
+          <path id="ev-forecast-curve" class="forecast-path" stroke="var(--ev-color)" stroke-width="2" d="" />
+          <path id="ac-forecast-curve" class="forecast-path" stroke="var(--ac-color)" stroke-width="2" d="" />
+
+          <!-- Actual Performance Curves -->
+          <path id="ev-curve" class="curve-path" stroke="var(--ev-color)" stroke-width="3.2" filter="url(#glow-ev)" d="" />
+          <path id="ac-curve" class="curve-path" stroke="var(--ac-color)" stroke-width="3.2" filter="url(#glow-ac)" d="" />
+
+          <!-- Variance Brackets & Annotations at Data Date -->
+          <g id="variance-brackets-layer"></g>
+
+          <!-- Data Date Vertical Line & Marker -->
+          <g id="data-date-layer"></g>
+
+          <!-- Interactive Hover Points Layer -->
+          <g id="points-layer"></g>
+        </svg>
+
+        <!-- Hover Tooltip -->
+        <div id="chart-tooltip" class="chart-tooltip"></div>
+      </div>
+    </div>
+
+    <!-- Side Panels: Gauges & Performance Health -->
+    <div class="side-panel">
+
+      <!-- Speedometers Card -->
+      <div class="gauge-card">
+        <div class="gauge-card-header">
+          <span class="gauge-card-title">Performance Efficiency</span>
+          <span class="badge-tag">Ratio</span>
+        </div>
+
+        <div class="gauges-row">
+          <!-- CPI Speedometer -->
+          <div class="speedo-unit">
+            <svg id="cpi-speedo" class="speedo-svg" viewBox="0 0 120 70"></svg>
+            <span class="speedo-title">Cost (CPI)</span>
+            <span id="disp-cpi-val" class="speedo-val text-critical">0.87</span>
+            <span id="disp-cpi-badge" class="speedo-badge badge-critical">Over Budget</span>
+          </div>
+
+          <!-- SPI Speedometer -->
+          <div class="speedo-unit">
+            <svg id="spi-speedo" class="speedo-svg" viewBox="0 0 120 70"></svg>
+            <span class="speedo-title">Schedule (SPI)</span>
+            <span id="disp-spi-val" class="speedo-val text-critical">0.80</span>
+            <span id="disp-spi-badge" class="speedo-badge badge-critical">Slipping</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostic & Quadrant Card -->
+      <div class="diagnostic-card">
+        <div class="diag-title">
+          <span>🎯</span> Project Quadrant & Feasibility
+        </div>
+
+        <div class="quadrant-box" id="quadrant-display">
+          <div class="quadrant-title text-critical">
+            <span>⚠️</span> Quadrant III: Crisis Zone
+          </div>
+          <div class="quadrant-desc">
+            Both cost-inefficient (CPI &lt; 1.0) and schedule-lagging (SPI &lt; 1.0). Immediate operational triage required.
+          </div>
+        </div>
+
+        <!-- Key Derivative Metrics -->
+        <div class="metric-list">
+          <div class="metric-item">
+            <span class="metric-name">Earned Schedule (ES)</span>
+            <span id="disp-es-val" class="metric-number">Month 4.8</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-name">Time Variance (SVₜ)</span>
+            <span id="disp-svt-val" class="metric-number text-critical">-1.2 Months</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-name">TCPI to Meet BAC</span>
+            <span id="disp-tcpi-bac" class="metric-number text-critical">1.16 (High Risk)</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-name">TCPI to Meet EAC</span>
+            <span id="disp-tcpi-eac" class="metric-number text-safe">0.87 (Realistic)</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-name">Forecast Completion</span>
+            <span id="disp-forecast-date" class="metric-number">Month 12.5 (Delayed)</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Tabs: Executive Briefing, Data Grid, Formulas -->
+  <div class="tabs-section">
+    <div class="tabs-nav">
+      <button class="tab-nav-btn active" onclick="switchTab('briefing', this)">
+        <span>📋</span> Executive Briefing & Triage
+      </button>
+      <button class="tab-nav-btn" onclick="switchTab('data-table', this)">
+        <span>📊</span> Monthly Cash Flow & Variances Grid
+      </button>
+      <button class="tab-nav-btn" onclick="switchTab('formulas', this)">
+        <span>📐</span> EVM Mathematical Formulas
+      </button>
+    </div>
+
+    <!-- Tab 1: Briefing -->
+    <div id="tab-briefing" class="tab-content active">
+      <div class="briefing-grid">
+        <div class="briefing-card">
+          <h3><span>🚨</span> Executive Diagnostic Summary</h3>
+          <p id="briefing-narrative">
+            At <strong>Month 6.0</strong>, the Surya Inverter Foundation package is experiencing severe double-jeopardy. 
+            While ₹6.00 Crore of progress was scheduled, only <strong>₹4.80 Crore</strong> of physical assets have been delivered (24 of 50 foundations). 
+            Actual costs paid out stand at <strong>₹5.50 Crore</strong>, generating a cost overrun of ₹70 Lakhs and a schedule deficit of ₹1.20 Crore (1.2 calendar months delay).
+          </p>
+          <p style="margin-top: 6px; font-size: 0.8rem; color: var(--text-dim);" id="briefing-banana-status">
+            <strong>Envelope Status:</strong> EV is currently within the Banana Envelope (above Late Curve ₹3.60 Cr), meaning float has been consumed but critical path breach depends on whether delayed plinths lie on the substation critical tie line.
+          </p>
+        </div>
+
+        <div class="briefing-card">
+          <h3><span>🛠️</span> Project Director Action Items</h3>
+          <div class="action-steps" id="briefing-actions">
+            <div class="action-step-item">
+              <span class="step-num">1</span>
+              <div><strong>Freeze Contractor Overtime Billing:</strong> Audit earthwork invoices to verify bentonite pumping and rock breaker claims that inflated unit costs by ₹2.92L per plinth.</div>
+            </div>
+            <div class="action-step-item">
+              <span class="step-num">2</span>
+              <div><strong>Rebalance Crew Allocation:</strong> Mobilize a second concrete shuttering gang specifically to bring monthly production from 4.0 to 5.5 plinths/month.</div>
+            </div>
+            <div class="action-step-item">
+              <span class="step-num">3</span>
+              <div><strong>Execute Baseline Change Request (BCR):</strong> Since TCPI (1.16) indicates high difficulty in recovering BAC, prepare formal management reserve allocation for ₹1.46 Cr.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Monthly Data Grid -->
+    <div id="tab-data-table" class="tab-content">
+      <div class="table-container">
+        <table class="evm-data-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>PV Early</th>
+              <th>PV Late</th>
+              <th>EV (Earned)</th>
+              <th>AC (Actual)</th>
+              <th>CV (EV-AC)</th>
+              <th>SV (EV-PV)</th>
+              <th>CPI</th>
+              <th>SPI</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: Formula Reference -->
+    <div id="tab-formulas" class="tab-content">
+      <div class="formula-grid">
+        <div class="formula-card">
+          <span class="formula-card-name">Planned Value (PV / BCWS)</span>
+          <span class="formula-card-math">PV = Planned % × BAC</span>
+          <span class="formula-card-desc">Budget authorized for work scheduled by the cutoff date.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Earned Value (EV / BCWP)</span>
+          <span class="formula-card-math">EV = Physical % × BAC</span>
+          <span class="formula-card-desc">Budgeted value of physical work actually completed.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Cost Variance (CV)</span>
+          <span class="formula-card-math">CV = EV - AC</span>
+          <span class="formula-card-desc">Difference between value earned and cash spent. Negative = Over budget.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Schedule Variance (SV)</span>
+          <span class="formula-card-math">SV = EV - PV</span>
+          <span class="formula-card-desc">Value delivered versus scheduled. Negative = Behind schedule.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Cost Performance Index (CPI)</span>
+          <span class="formula-card-math">CPI = EV / AC</span>
+          <span class="formula-card-desc">Efficiency ratio. Value earned per Rupee/Dollar spent.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Schedule Performance Index (SPI)</span>
+          <span class="formula-card-math">SPI = EV / PV</span>
+          <span class="formula-card-desc">Velocity ratio. Speed of progress compared to baseline plan.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Estimate at Completion (EAC)</span>
+          <span class="formula-card-math">EAC = BAC / CPI</span>
+          <span class="formula-card-desc">Projected final cost assuming current cost efficiency continues.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">Variance at Completion (VAC)</span>
+          <span class="formula-card-math">VAC = BAC - EAC</span>
+          <span class="formula-card-desc">Projected bottom-line budget surplus or overrun at finish.</span>
+        </div>
+        <div class="formula-card">
+          <span class="formula-card-name">To-Complete Index (TCPI)</span>
+          <span class="formula-card-math">TCPI = (BAC - EV) / (Target - AC)</span>
+          <span class="formula-card-desc">Cost efficiency required on remaining work to finish within target.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Surya 100MW Solar IPP Project Controls • Inverter Foundation Package (BAC: ₹10.00 Cr / $1.20M USD) • Oracle Primavera P6 Scheduling Standard
+  </footer>
+
+</div>
+
+<script>
+  /* --- STATE MANAGEMENT --- */
+  const BAC_INR = 10.00; // in Crores
+  const USD_EXCHANGE = 12.0; // 10 Cr INR approx = 1.2M USD (1 Cr = 0.12M USD)
+  const TOTAL_PLINTHS = 50;
+  const BASELINE_MONTHS = 10;
+  const MAX_TIMELINE_MONTHS = 14;
+
+  let state = {
+    currency: 'INR',
+    dataDate: 6.0,
+    progressPct: 48.0,
+    actualCost: 5.50, // in Cr INR
+    eacMethod: 'typical', // 'typical', 'atypical', 'combined'
+    activeScenario: 'disaster'
+  };
+
+  /* Baseline PV Profiles (Month 0 to 14 in Cr INR) */
+  const pvEarlyData = [
+    0.00, // M0
+    0.40, // M1
+    1.10, // M2
+    2.10, // M3
+    3.30, // M4
+    4.60, // M5
+    6.00, // M6
+    7.40, // M7
+    8.60, // M8
+    9.50, // M9
+    10.00, // M10
+    10.00, // M11
+    10.00, // M12
+    10.00, // M13
+    10.00  // M14
+  ];
+
+  const pvLateData = [
+    0.00, // M0
+    0.10, // M1
+    0.30, // M2
+    0.70, // M3
+    1.30, // M4
+    2.30, // M5
+    3.60, // M6
+    5.20, // M7
+    7.00, // M8
+    8.80, // M9
+    10.00, // M10
+    10.00, // M11
+    10.00, // M12
+    10.00, // M13
+    10.00  // M14
+  ];
+
+  /* Preset Scenarios */
+  const scenarios = {
+    onTrack: {
+      dataDate: 6.0,
+      progressPct: 60.0,
+      actualCost: 6.00,
+      eacMethod: 'typical',
+      name: 'onTrack'
+    },
+    disaster: {
+      dataDate: 6.0,
+      progressPct: 48.0,
+      actualCost: 5.50,
+      eacMethod: 'typical',
+      name: 'disaster'
+    },
+    dream: {
+      dataDate: 6.0,
+      progressPct: 72.0,
+      actualCost: 5.20,
+      eacMethod: 'typical',
+      name: 'dream'
+    },
+    cashBleed: {
+      dataDate: 6.0,
+      progressPct: 25.0,
+      actualCost: 7.00,
+      eacMethod: 'typical',
+      name: 'cashBleed'
+    },
+    fastBurn: {
+      dataDate: 6.0,
+      progressPct: 75.0,
+      actualCost: 8.80,
+      eacMethod: 'combined',
+      name: 'fastBurn'
+    }
+  };
+
+  /* Helper Interpolation */
+  function interpolateArray(arr, t) {
+    if (t <= 0) return arr[0];
+    if (t >= arr.length - 1) return arr[arr.length - 1];
+    const idx = Math.floor(t);
+    const frac = t - idx;
+    return arr[idx] + (arr[idx + 1] - arr[idx]) * frac;
+  }
+
+  /* Currency Formatter */
+  function formatMoney(valINR, includeUnit = true) {
+    if (state.currency === 'USD') {
+      const valUSD = valINR * (1.2 / 10.0); // 10 Cr INR = 1.2M USD
+      const formatted = valUSD.toFixed(3);
+      return includeUnit ? `$${formatted}M` : `$${formatted}`;
+    } else {
+      const formatted = valINR.toFixed(2);
+      return includeUnit ? `₹${formatted} Cr` : `₹${formatted}`;
+    }
+  }
+
+  function formatShortLakhs(valINR) {
+    if (state.currency === 'USD') {
+      const usdK = Math.round(valINR * 120); // 1 Cr = $120k USD
+      return `$${usdK}k`;
+    } else {
+      const lakhs = Math.round(valINR * 100);
+      return `₹${lakhs} Lakhs`;
+    }
+  }
+
+  /* --- CORE COMPUTATION ENGINE --- */
+  function computeEVM() {
+    const dd = state.dataDate;
+    const pv = interpolateArray(pvEarlyData, dd);
+    const pvLate = interpolateArray(pvLateData, dd);
+    const ev = (state.progressPct / 100) * BAC_INR;
+    const ac = state.actualCost;
+
+    const cv = ev - ac;
+    const sv = ev - pv;
+    const cpi = ac > 0 ? (ev / ac) : 1.0;
+    const spi = pv > 0 ? (ev / pv) : 1.0;
+
+    // EAC calculation
+    let eac = BAC_INR;
+    const remainingWork = BAC_INR - ev;
+
+    if (state.eacMethod === 'typical') {
+      eac = cpi > 0.05 ? (BAC_INR / cpi) : (BAC_INR * 5);
+    } else if (state.eacMethod === 'atypical') {
+      eac = ac + remainingWork;
+    } else if (state.eacMethod === 'combined') {
+      const factor = cpi * spi;
+      eac = factor > 0.05 ? ac + (remainingWork / factor) : (ac + remainingWork * 5);
+    }
+
+    const etc = Math.max(0, eac - ac);
+    const vac = BAC_INR - eac;
+
+    // TCPI
+    const remainingBudgetBAC = BAC_INR - ac;
+    const tcpiBAC = remainingBudgetBAC > 0 ? (remainingWork / remainingBudgetBAC) : 9.99;
+
+    const remainingBudgetEAC = eac - ac;
+    const tcpiEAC = remainingBudgetEAC > 0 ? (remainingWork / remainingBudgetEAC) : 1.0;
+
+    // Earned Schedule (ES) calculation
+    let es = 0;
+    for (let m = 0; m < pvEarlyData.length - 1; m++) {
+      if (ev >= pvEarlyData[m] && ev <= pvEarlyData[m + 1]) {
+        const delta = pvEarlyData[m + 1] - pvEarlyData[m];
+        const fraction = delta > 0 ? (ev - pvEarlyData[m]) / delta : 0;
+        es = m + fraction;
+        break;
+      }
+    }
+    if (ev >= BAC_INR) es = BASELINE_MONTHS;
+    const svt = es - dd; // in months
+
+    // Forecast completion date
+    const avgVelocity = dd > 0 ? (ev / dd) : 1.0;
+    const estMonthsRemaining = avgVelocity > 0 ? (remainingWork / avgVelocity) : 4;
+    const estTotalDuration = dd + estMonthsRemaining;
+
+    // Historical EV and AC curves up to DD
+    const evPoints = [];
+    const acPoints = [];
+    for (let m = 0; m <= MAX_TIMELINE_MONTHS; m++) {
+      if (m <= dd) {
+        const ratio = dd > 0 ? (m / dd) : 0;
+        // Natural sigmoidal curve shaping up to current EV & AC
+        const shape = Math.pow(ratio, 1.2);
+        evPoints.push({ month: m, val: ev * shape });
+        acPoints.push({ month: m, val: ac * Math.pow(ratio, 1.1) });
+      } else {
+        evPoints.push(null);
+        acPoints.push(null);
+      }
+    }
+
+    return {
+      dd,
+      pv,
+      pvLate,
+      ev,
+      ac,
+      cv,
+      sv,
+      cpi,
+      spi,
+      eac,
+      etc,
+      vac,
+      tcpiBAC,
+      tcpiEAC,
+      es,
+      svt,
+      estTotalDuration,
+      evPoints,
+      acPoints
+    };
+  }
+
+  /* --- UI UPDATER --- */
+  function updateDashboard() {
+    const data = computeEVM();
+
+    // 1. Controls displays
+    document.getElementById('disp-data-date').textContent = `Month ${data.dd.toFixed(1)}`;
+    const plinthsBuilt = Math.round((state.progressPct / 100) * TOTAL_PLINTHS);
+    document.getElementById('disp-progress').textContent = `${state.progressPct.toFixed(1)}% (${plinthsBuilt} Plinths)`;
+    document.getElementById('disp-ac').textContent = `${formatMoney(data.ac)} (${formatShortLakhs(data.ac)})`;
+    
+    // Sliders sync
+    document.getElementById('slider-month').value = data.dd;
+    document.getElementById('slider-progress').value = state.progressPct;
+    document.getElementById('slider-ac').value = state.actualCost;
+
+    // 2. KPI Cards
+    // PV
+    const pvPct = ((data.pv / BAC_INR) * 100).toFixed(1);
+    document.getElementById('kpi-pv-val').textContent = formatMoney(data.pv);
+    document.getElementById('kpi-pv-pct').textContent = `${pvPct}% Plan`;
+
+    // EV
+    const evPct = state.progressPct.toFixed(1);
+    document.getElementById('kpi-ev-val').textContent = formatMoney(data.ev);
+    document.getElementById('kpi-ev-pct').textContent = `${evPct}% Built`;
+    document.getElementById('kpi-ev-plinths').textContent = `Physical: ${plinthsBuilt} of ${TOTAL_PLINTHS} Foundations`;
+
+    // AC
+    const acPct = ((data.ac / BAC_INR) * 100).toFixed(1);
+    document.getElementById('kpi-ac-val').textContent = formatMoney(data.ac);
+    document.getElementById('kpi-ac-pct').textContent = `${acPct}% BAC Spent`;
+    const unitRate = plinthsBuilt > 0 ? (data.ac / plinthsBuilt) : 0;
+    document.getElementById('kpi-unit-cost').textContent = plinthsBuilt > 0 ? `${formatShortLakhs(unitRate)} / foundation` : '0 foundations';
+
+    // CV
+    const cvEl = document.getElementById('kpi-cv-val');
+    const cvBadge = document.getElementById('kpi-cv-badge');
+    const cvSub = document.getElementById('kpi-cv-sub');
+    cvEl.textContent = `${data.cv >= 0 ? '+' : ''}${formatMoney(data.cv)}`;
+    if (data.cv >= 0) {
+      cvEl.className = 'kpi-card-value text-safe';
+      cvBadge.className = 'kpi-card-subbadge badge-safe';
+      cvBadge.textContent = 'Under Budget';
+      cvSub.innerHTML = `<span class="text-safe">▲ ${formatShortLakhs(data.cv)} Savings</span>`;
+    } else {
+      cvEl.className = 'kpi-card-value text-critical';
+      cvBadge.className = 'kpi-card-subbadge badge-critical';
+      cvBadge.textContent = 'Over Budget';
+      cvSub.innerHTML = `<span class="text-critical">▼ ${formatShortLakhs(Math.abs(data.cv))} Cash Overrun</span>`;
+    }
+
+    // SV
+    const svEl = document.getElementById('kpi-sv-val');
+    const svBadge = document.getElementById('kpi-sv-badge');
+    const svSub = document.getElementById('kpi-sv-sub');
+    svEl.textContent = `${data.sv >= 0 ? '+' : ''}${formatMoney(data.sv)}`;
+    const plinthDeficit = Math.round((data.sv / BAC_INR) * TOTAL_PLINTHS);
+    if (data.sv >= 0) {
+      svEl.className = 'kpi-card-value text-safe';
+      svBadge.className = 'kpi-card-subbadge badge-safe';
+      svBadge.textContent = 'Ahead of Plan';
+      svSub.innerHTML = `<span class="text-safe">▲ +${plinthDeficit} Extra Foundations</span>`;
+    } else {
+      svEl.className = 'kpi-card-value text-critical';
+      svBadge.className = 'kpi-card-subbadge badge-critical';
+      svBadge.textContent = 'Behind Plan';
+      svSub.innerHTML = `<span class="text-critical">▼ Missing ${Math.abs(plinthDeficit)} Foundations</span>`;
+    }
+
+    // EAC & VAC
+    const eacEl = document.getElementById('kpi-eac-val');
+    const vacBadge = document.getElementById('kpi-vac-badge');
+    const vacSub = document.getElementById('kpi-vac-sub');
+    eacEl.textContent = formatMoney(data.eac);
+    if (data.vac >= 0) {
+      vacBadge.className = 'kpi-card-subbadge badge-safe';
+      vacBadge.textContent = 'Surplus';
+      vacSub.innerHTML = `<span class="text-safe">VAC: +${formatMoney(data.vac)} Under Budget</span>`;
+    } else {
+      vacBadge.className = 'kpi-card-subbadge badge-critical';
+      vacBadge.textContent = 'Breach';
+      vacSub.innerHTML = `<span class="text-critical">VAC: -${formatMoney(Math.abs(data.vac))} Overrun</span>`;
+    }
+
+    // 3. Gauges & Performance Health
+    renderSpeedometer('cpi-speedo', data.cpi, 0.5, 1.5);
+    renderSpeedometer('spi-speedo', data.spi, 0.5, 1.5);
+
+    const cpiValEl = document.getElementById('disp-cpi-val');
+    const cpiBadgeEl = document.getElementById('disp-cpi-badge');
+    cpiValEl.textContent = data.cpi.toFixed(2);
+    if (data.cpi >= 1.0) {
+      cpiValEl.className = 'speedo-val text-safe';
+      cpiBadgeEl.className = 'speedo-badge badge-safe';
+      cpiBadgeEl.textContent = 'Under Budget';
+    } else if (data.cpi >= 0.90) {
+      cpiValEl.className = 'speedo-val text-warning';
+      cpiBadgeEl.className = 'speedo-badge badge-warning';
+      cpiBadgeEl.textContent = 'Warning';
+    } else {
+      cpiValEl.className = 'speedo-val text-critical';
+      cpiBadgeEl.className = 'speedo-badge badge-critical';
+      cpiBadgeEl.textContent = 'Over Budget';
+    }
+
+    const spiValEl = document.getElementById('disp-spi-val');
+    const spiBadgeEl = document.getElementById('disp-spi-badge');
+    spiValEl.textContent = data.spi.toFixed(2);
+    if (data.spi >= 1.0) {
+      spiValEl.className = 'speedo-val text-safe';
+      spiBadgeEl.className = 'speedo-badge badge-safe';
+      spiBadgeEl.textContent = 'Ahead';
+    } else if (data.spi >= 0.90) {
+      spiValEl.className = 'speedo-val text-warning';
+      spiBadgeEl.className = 'speedo-badge badge-warning';
+      spiBadgeEl.textContent = 'Lagging';
+    } else {
+      spiValEl.className = 'speedo-val text-critical';
+      spiBadgeEl.className = 'speedo-badge badge-critical';
+      spiBadgeEl.textContent = 'Slipping';
+    }
+
+    // 4. Quadrant Classification & Derived Metrics
+    updateQuadrantBox(data);
+
+    document.getElementById('disp-es-val').textContent = `Month ${data.es.toFixed(1)}`;
+    const svtEl = document.getElementById('disp-svt-val');
+    svtEl.textContent = `${data.svt >= 0 ? '+' : ''}${data.svt.toFixed(1)} Months`;
+    svtEl.className = data.svt >= 0 ? 'metric-number text-safe' : 'metric-number text-critical';
+
+    const tcpiBacEl = document.getElementById('disp-tcpi-bac');
+    if (data.tcpiBAC > 1.20) {
+      tcpiBacEl.textContent = `${data.tcpiBAC.toFixed(2)} (Impossible)`;
+      tcpiBacEl.className = 'metric-number text-critical';
+    } else if (data.tcpiBAC > 1.05) {
+      tcpiBacEl.textContent = `${data.tcpiBAC.toFixed(2)} (High Risk)`;
+      tcpiBacEl.className = 'metric-number text-warning';
+    } else {
+      tcpiBacEl.textContent = `${data.tcpiBAC.toFixed(2)} (Achievable)`;
+      tcpiBacEl.className = 'metric-number text-safe';
+    }
+
+    document.getElementById('disp-tcpi-eac').textContent = `${data.tcpiEAC.toFixed(2)} (Targeted)`;
+    const finishEl = document.getElementById('disp-forecast-date');
+    finishEl.textContent = `Month ${data.estTotalDuration.toFixed(1)} ${data.estTotalDuration > BASELINE_MONTHS ? '(Delayed)' : '(On Time)'}`;
+    finishEl.className = data.estTotalDuration > BASELINE_MONTHS ? 'metric-number text-critical' : 'metric-number text-safe';
+
+    // 5. Update S-Curve Chart SVG
+    renderSCurveSVG(data);
+
+    // 6. Update Narrative Briefing
+    updateBriefingNarrative(data);
+
+    // 7. Update Table View
+    updateDataTable(data);
+  }
+
+  /* --- QUADRANT DIAGNOSTIC BOX --- */
+  function updateQuadrantBox(data) {
+    const box = document.getElementById('quadrant-display');
+    if (data.cpi >= 1.0 && data.spi >= 1.0) {
+      box.innerHTML = `
+        <div class="quadrant-title text-safe">
+          <span>🚀</span> Quadrant I: Peak Industrial Execution
+        </div>
+        <div class="quadrant-desc">
+          Ahead of schedule (SPI ${data.spi.toFixed(2)}) and under budget (CPI ${data.cpi.toFixed(2)}). Contractor qualifies for early milestone completion incentive.
+        </div>
+      `;
+    } else if (data.cpi < 1.0 && data.spi >= 1.0) {
+      box.innerHTML = `
+        <div class="quadrant-title text-warning">
+          <span>⚡</span> Quadrant II: Fast-Track / Buying Speed
+        </div>
+        <div class="quadrant-desc">
+          Ahead of schedule (SPI ${data.spi.toFixed(2)}) but over budget (CPI ${data.cpi.toFixed(2)}). Expensive night shifts and premium logistics utilized to avoid Liquidated Damages.
+        </div>
+      `;
+    } else if (data.cpi < 1.0 && data.spi < 1.0) {
+      box.innerHTML = `
+        <div class="quadrant-title text-critical">
+          <span>🚨</span> Quadrant III: Crisis & Cash Bleed
+        </div>
+        <div class="quadrant-desc">
+          Over budget (CPI ${data.cpi.toFixed(2)}) and behind schedule (SPI ${data.spi.toFixed(2)}). Immediate executive intervention required before liquidated damages trigger.
+        </div>
+      `;
+    } else {
+      box.innerHTML = `
+        <div class="quadrant-title text-warning">
+          <span>⏳</span> Quadrant IV: Penny-Pinching Lag
+        </div>
+        <div class="quadrant-desc">
+          Under budget (CPI ${data.cpi.toFixed(2)}) but trailing schedule (SPI ${data.spi.toFixed(2)}). False economy: low spend is masking site work stoppages and drawing approval bottlenecks.
+        </div>
+      `;
+    }
+  }
+
+  /* --- EXECUTIVE NARRATIVE GENERATOR --- */
+  function updateBriefingNarrative(data) {
+    const narrativeEl = document.getElementById('briefing-narrative');
+    const bananaEl = document.getElementById('briefing-banana-status');
+    const actionsEl = document.getElementById('briefing-actions');
+
+    const plinthsBuilt = Math.round((state.progressPct / 100) * TOTAL_PLINTHS);
+    const plinthsTarget = Math.round((data.pv / BAC_INR) * TOTAL_PLINTHS);
+
+    let text = `At <strong>Month ${data.dd.toFixed(1)}</strong>, the Surya Inverter Foundation package `;
+    if (data.cpi < 1.0 && data.spi < 1.0) {
+      text += `is facing operational distress. While <strong>${formatMoney(data.pv)}</strong> of work (${plinthsTarget} plinths) was planned, only <strong>${formatMoney(data.ev)}</strong> (${plinthsBuilt} plinths) has been constructed. Cash disbursed stands at <strong>${formatMoney(data.ac)}</strong>, leaving an overrun of <strong>${formatShortLakhs(Math.abs(data.cv))}</strong> and a schedule delay of <strong>${Math.abs(data.svt).toFixed(1)} months</strong>.`;
+    } else if (data.cpi >= 1.0 && data.spi >= 1.0) {
+      text += `is demonstrating exceptional performance! With <strong>${formatMoney(data.ev)}</strong> earned (${plinthsBuilt} plinths) against <strong>${formatMoney(data.pv)}</strong> planned, the site is ahead by ${formatMoney(data.sv)}. Actual spending is contained at <strong>${formatMoney(data.ac)}</strong>, realizing <strong>${formatShortLakhs(data.cv)}</strong> in bottom-line savings.`;
+    } else if (data.cpi < 1.0 && data.spi >= 1.0) {
+      text += `is successfully fast-tracking physical output (${plinthsBuilt} plinths completed vs ${plinthsTarget} planned), but at elevated unit costs. The package is running <strong>${formatShortLakhs(Math.abs(data.cv))} over budget</strong> to secure schedule compliance.`;
+    } else {
+      text += `remains under budget (${formatShortLakhs(data.cv)} below allocated spend), but physical velocity has stalled (${plinthsBuilt} plinths vs ${plinthsTarget} planned). Site work must be accelerated before float is entirely wiped out.`;
+    }
+    narrativeEl.innerHTML = text;
+
+    // Banana envelope comment
+    if (data.ev < data.pvLate) {
+      bananaEl.innerHTML = `<span class="text-critical"><strong>⚠️ Critical Path Breach:</strong> Earned Value (${formatMoney(data.ev)}) has dropped BELOW the Late S-Curve (${formatMoney(data.pvLate)}). Negative float has officially been generated; the contract handover date cannot be met without schedule compression!</span>`;
+    } else if (data.ev < data.pv) {
+      bananaEl.innerHTML = `<strong>Banana Envelope Status:</strong> EV is positioned inside the envelope (above Late Curve ${formatMoney(data.pvLate)}). While float has been consumed, contractual completion remains physically possible if remaining critical path activities avoid further slippage.`;
+    } else {
+      bananaEl.innerHTML = `<span class="text-safe"><strong>Banana Envelope Status:</strong> EV is riding along or exceeding the Early S-Curve (${formatMoney(data.pv)}). Total Float across the inverter network remains intact and healthy.</span>`;
+    }
+
+    // Dynamic Action Steps
+    let step1, step2, step3;
+    if (data.cpi < 0.90) {
+      step1 = `<strong>Audit Site Invoices & Waste:</strong> Civil subcontractor unit cost is ${formatShortLakhs(data.ac / Math.max(1, plinthsBuilt))} per plinth vs ₹20.00L baseline. Freeze unverified earthwork and bentonite pumping invoices.`;
+    } else {
+      step1 = `<strong>Maintain Lean Cost Controls:</strong> Keep current material batching efficiencies intact as volume ramps into subsequent inverter blocks.`;
+    }
+
+    if (data.spi < 0.90) {
+      step2 = `<strong>Mobilize Dual Shuttering Crews:</strong> Progress rate is currently trailing at ${(data.ev / Math.max(0.5, data.dd)).toFixed(2)} Cr/mo. Introduce modular steel formwork to hit 6.0 plinths per month.`;
+    } else {
+      step2 = `<strong>Synchronize Downstream Trades:</strong> Ensure transformer skid deliveries and MV cable tray installation teams align with the accelerated foundation sign-offs.`;
+    }
+
+    if (data.tcpiBAC > 1.15) {
+      step3 = `<strong>Issue Baseline Revision Notice:</strong> Recovering to BAC is statistically improbable (TCPI = ${data.tcpiBAC.toFixed(2)}). Request project governance review for ${formatMoney(Math.abs(data.vac))} management reserve authorization.`;
+    } else {
+      step3 = `<strong>Track Critical Path Float:</strong> Monitor 33kV substation conduit tie-in float weekly in P6 to avoid late electrical commissioning traps.`;
+    }
+
+    actionsEl.innerHTML = `
+      <div class="action-step-item">
+        <span class="step-num">1</span>
+        <div>${step1}</div>
+      </div>
+      <div class="action-step-item">
+        <span class="step-num">2</span>
+        <div>${step2}</div>
+      </div>
+      <div class="action-step-item">
+        <span class="step-num">3</span>
+        <div>${step3}</div>
+      </div>
+    `;
+  }
+
+  /* --- S-CURVE SVG VISUALIZATION RENDERER --- */
+  function renderSCurveSVG(data) {
+    const svg = document.getElementById('scurve-svg');
+    const width = 920;
+    const height = 460;
+    const pad = { top: 30, right: 50, bottom: 50, left: 65 };
+
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+
+    // Coordinate mapping functions
+    const maxVal = 14.0; // Max cost on Y axis (Cr INR)
+    function xCoord(m) {
+      return pad.left + (m / MAX_TIMELINE_MONTHS) * plotW;
+    }
+    function yCoord(val) {
+      return pad.top + plotH - (val / maxVal) * plotH;
+    }
+
+    // 1. Grid & Axes Layer
+    const gridLayer = document.getElementById('grid-layer');
+    let gridHTML = '';
+
+    // Horizontal grid lines (Cost)
+    for (let c = 0; c <= maxVal; c += 2) {
+      const y = yCoord(c);
+      gridHTML += `<line class="grid-line" x1="${pad.left}" y1="${y}" x2="${pad.left + plotW}" y2="${y}" />`;
+      gridHTML += `<text class="axis-label" x="${pad.left - 12}" y="${y + 4}" text-anchor="end">${formatMoney(c, false)}</text>`;
+    }
+
+    // Vertical grid lines (Months)
+    for (let m = 0; m <= MAX_TIMELINE_MONTHS; m++) {
+      const x = xCoord(m);
+      gridHTML += `<line class="grid-line" x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + plotH}" />`;
+      gridHTML += `<text class="axis-label" x="${x}" y="${pad.top + plotH + 20}" text-anchor="middle">M${m}</text>`;
+    }
+
+    // Baseline Target marker at M10 (BAC)
+    const xM10 = xCoord(BASELINE_MONTHS);
+    const yBAC = yCoord(BAC_INR);
+    gridHTML += `
+      <line x1="${xM10}" y1="${pad.top}" x2="${xM10}" y2="${pad.top + plotH}" stroke="var(--solar-orange)" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.6"/>
+      <text class="axis-label" x="${xM10}" y="${pad.top - 10}" text-anchor="middle" fill="var(--solar-orange)">Target COD (M10)</text>
+      <circle cx="${xM10}" cy="${yBAC}" r="4" fill="var(--solar-orange)" />
+    `;
+
+    // Border lines
+    gridHTML += `<line class="axis-line" x1="${pad.left}" y1="${pad.top + plotH}" x2="${pad.left + plotW}" y2="${pad.top + plotH}" />`;
+    gridHTML += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + plotH}" />`;
+
+    gridLayer.innerHTML = gridHTML;
+
+    // 2. Compute Path Strings for Early and Late Curves
+    let earlyPathD = `M ${xCoord(0)} ${yCoord(pvEarlyData[0])}`;
+    for (let m = 1; m <= MAX_TIMELINE_MONTHS; m++) {
+      earlyPathD += ` L ${xCoord(m)} ${yCoord(pvEarlyData[m])}`;
+    }
+    document.getElementById('pv-early-curve').setAttribute('d', earlyPathD);
+
+    let latePathD = `M ${xCoord(0)} ${yCoord(pvLateData[0])}`;
+    for (let m = 1; m <= MAX_TIMELINE_MONTHS; m++) {
+      latePathD += ` L ${xCoord(m)} ${yCoord(pvLateData[m])}`;
+    }
+    document.getElementById('pv-late-curve').setAttribute('d', latePathD);
+
+    // 3. Banana Envelope Polygon Path
+    let bananaD = `M ${xCoord(0)} ${yCoord(pvEarlyData[0])}`;
+    for (let m = 1; m <= MAX_TIMELINE_MONTHS; m++) {
+      bananaD += ` L ${xCoord(m)} ${yCoord(pvEarlyData[m])}`;
+    }
+    for (let m = MAX_TIMELINE_MONTHS; m >= 0; m--) {
+      bananaD += ` L ${xCoord(m)} ${yCoord(pvLateData[m])}`;
+    }
+    bananaD += ' Z';
+    document.getElementById('banana-path').setAttribute('d', bananaD);
+
+    // 4. EV Path & AC Path up to Data Date
+    const dd = data.dd;
+    let evPathD = `M ${xCoord(0)} ${yCoord(0)}`;
+    let acPathD = `M ${xCoord(0)} ${yCoord(0)}`;
+
+    const numSteps = 40;
+    for (let s = 1; s <= numSteps; s++) {
+      const t = (s / numSteps) * dd;
+      const ratio = t / dd;
+      const curEV = data.ev * Math.pow(ratio, 1.25);
+      const curAC = data.ac * Math.pow(ratio, 1.15);
+      evPathD += ` L ${xCoord(t)} ${yCoord(curEV)}`;
+      acPathD += ` L ${xCoord(t)} ${yCoord(curAC)}`;
+    }
+    document.getElementById('ev-curve').setAttribute('d', evPathD);
+    document.getElementById('ac-curve').setAttribute('d', acPathD);
+
+    // 5. Forecast Curves from Data Date to Finish
+    const finishMonth = Math.min(MAX_TIMELINE_MONTHS, Math.max(dd + 1, data.estTotalDuration));
+    const evForecastD = `M ${xCoord(dd)} ${yCoord(data.ev)} L ${xCoord(finishMonth)} ${yCoord(BAC_INR)}`;
+    const acForecastD = `M ${xCoord(dd)} ${yCoord(data.ac)} L ${xCoord(finishMonth)} ${yCoord(data.eac)}`;
+    document.getElementById('ev-forecast-curve').setAttribute('d', evForecastD);
+    document.getElementById('ac-forecast-curve').setAttribute('d', acForecastD);
+
+    // 6. Data Date Layer (Vertical line & handle)
+    const ddX = xCoord(dd);
+    const ddLayer = document.getElementById('data-date-layer');
+    ddLayer.innerHTML = `
+      <line class="data-date-line" x1="${ddX}" y1="${pad.top - 10}" x2="${ddX}" y2="${pad.top + plotH}" />
+      <rect x="${ddX - 44}" y="${pad.top - 24}" width="88" height="20" rx="4" fill="#161b22" stroke="#ffffff" stroke-width="1.2" />
+      <text x="${ddX}" y="${pad.top - 10}" text-anchor="middle" fill="#ffffff" font-family="var(--font-mono)" font-size="10" font-weight="700">DD: M${dd.toFixed(1)}</text>
+      <circle class="data-date-handle" cx="${ddX}" cy="${pad.top + plotH}" r="7" />
+    `;
+
+    // 7. Variance Brackets at Data Date
+    const yPV = yCoord(data.pv);
+    const yEV = yCoord(data.ev);
+    const yAC = yCoord(data.ac);
+
+    const vLayer = document.getElementById('variance-brackets-layer');
+    let vHTML = '';
+
+    // Circles at Data Date intersection
+    vHTML += `<circle cx="${ddX}" cy="${yPV}" r="5" fill="var(--pv-color)" />`;
+    vHTML += `<circle cx="${ddX}" cy="${yEV}" r="6" fill="var(--ev-color)" filter="url(#glow-ev)" />`;
+    vHTML += `<circle cx="${ddX}" cy="${yAC}" r="6" fill="var(--ac-color)" filter="url(#glow-ac)" />`;
+
+    // Cost Variance Bracket (Between EV and AC)
+    const cvColor = data.cv >= 0 ? 'var(--safe-green)' : 'var(--critical-red)';
+    const offsetCV = ddX + 16;
+    vHTML += `
+      <line class="variance-bracket" x1="${offsetCV}" y1="${yEV}" x2="${offsetCV}" y2="${yAC}" stroke="${cvColor}" stroke-dasharray="3,2" />
+      <line class="variance-bracket" x1="${offsetCV - 4}" y1="${yEV}" x2="${offsetCV + 4}" y2="${yEV}" stroke="${cvColor}" />
+      <line class="variance-bracket" x1="${offsetCV - 4}" y1="${yAC}" x2="${offsetCV + 4}" y2="${yAC}" stroke="${cvColor}" />
+      <text x="${offsetCV + 8}" y="${(yEV + yAC) / 2 + 4}" fill="${cvColor}" font-family="var(--font-mono)" font-size="10" font-weight="700">
+        CV: ${data.cv >= 0 ? '+' : ''}${formatMoney(data.cv, false)}
+      </text>
+    `;
+
+    // Schedule Variance Bracket (Between EV and PV)
+    const svColor = data.sv >= 0 ? 'var(--safe-green)' : 'var(--critical-red)';
+    const offsetSV = ddX - 22;
+    vHTML += `
+      <line class="variance-bracket" x1="${offsetSV}" y1="${yEV}" x2="${offsetSV}" y2="${yPV}" stroke="${svColor}" stroke-dasharray="3,2" />
+      <line class="variance-bracket" x1="${offsetSV - 4}" y1="${yEV}" x2="${offsetSV + 4}" y2="${yEV}" stroke="${svColor}" />
+      <line class="variance-bracket" x1="${offsetSV - 4}" y1="${yPV}" x2="${offsetSV + 4}" y2="${yPV}" stroke="${svColor}" />
+      <text x="${offsetSV - 8}" y="${(yEV + yPV) / 2 + 4}" text-anchor="end" fill="${svColor}" font-family="var(--font-mono)" font-size="10" font-weight="700">
+        SV: ${data.sv >= 0 ? '+' : ''}${formatMoney(data.sv, false)}
+      </text>
+    `;
+
+    // Earned Schedule (ES) horizontal projection
+    const xES = xCoord(data.es);
+    vHTML += `
+      <line x1="${xES}" y1="${yEV}" x2="${ddX}" y2="${yEV}" stroke="var(--purple-accent)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.85"/>
+      <circle cx="${xES}" cy="${yEV}" r="4" fill="var(--purple-accent)" />
+      <text x="${(xES + ddX) / 2}" y="${yEV - 8}" text-anchor="middle" fill="var(--purple-accent)" font-family="var(--font-mono)" font-size="10" font-weight="700">
+        ES: M${data.es.toFixed(1)} (SVₜ = ${data.svt >= 0 ? '+' : ''}${data.svt.toFixed(1)}mo)
+      </text>
+    `;
+
+    vLayer.innerHTML = vHTML;
+
+    // 8. Interactive Month Hover Overlay Points
+    setupChartInteractions(pad, plotW, plotH);
+  }
+
+  /* --- SPEEDOMETER GAUGE RENDERER --- */
+  function renderSpeedometer(svgId, val, minVal, maxVal) {
+    const svg = document.getElementById(svgId);
+    const clamped = Math.max(minVal, Math.min(maxVal, val));
+    const pct = (clamped - minVal) / (maxVal - minVal); // 0 to 1
+
+    const r = 42;
+    const cx = 60;
+    const cy = 56;
+    const startAngle = -Math.PI; // 180 deg
+    const endAngle = 0; // 0 deg
+
+    function polarToCartesian(angle) {
+      return {
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle)
+      };
+    }
+
+    // Arc zones: Red (0-0.4), Yellow (0.4-0.5), Green (0.5-1.0)
+    // val = 1.0 corresponds to (1.0 - 0.5) / (1.5 - 0.5) = 0.5 pct
+    const redEndAngle = startAngle + 0.40 * Math.PI;
+    const yellowEndAngle = startAngle + 0.52 * Math.PI;
+
+    const p0 = polarToCartesian(startAngle);
+    const pRed = polarToCartesian(redEndAngle);
+    const pYel = polarToCartesian(yellowEndAngle);
+    const pEnd = polarToCartesian(endAngle);
+
+    // Needle angle
+    const needleAngle = startAngle + pct * Math.PI;
+    const tip = polarToCartesian(needleAngle);
+    const needleColor = val >= 1.0 ? 'var(--safe-green)' : (val >= 0.90 ? 'var(--warning-yellow)' : 'var(--critical-red)');
+
+    svg.innerHTML = `
+      <!-- Red Zone -->
+      <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${pRed.x} ${pRed.y}" fill="none" stroke="var(--critical-red)" stroke-width="6" opacity="0.8" />
+      <!-- Yellow Zone -->
+      <path d="M ${pRed.x} ${pRed.y} A ${r} ${r} 0 0 1 ${pYel.x} ${pYel.y}" fill="none" stroke="var(--warning-yellow)" stroke-width="6" opacity="0.8" />
+      <!-- Green Zone -->
+      <path d="M ${pYel.x} ${pYel.y} A ${r} ${r} 0 0 1 ${pEnd.x} ${pEnd.y}" fill="none" stroke="var(--safe-green)" stroke-width="6" opacity="0.8" />
+
+      <!-- Center target tick at 1.00 -->
+      <line x1="${cx}" y1="${cy - r + 3}" x2="${cx}" y2="${cy - r - 4}" stroke="#ffffff" stroke-width="2" />
+
+      <!-- Needle -->
+      <line x1="${cx}" y1="${cy}" x2="${tip.x}" y2="${tip.y}" stroke="${needleColor}" stroke-width="2.5" stroke-linecap="round" />
+      <circle cx="${cx}" cy="${cy}" r="4" fill="#ffffff" />
+    `;
+  }
+
+  /* --- INTERACTIVE TOOLTIP & CLICK HANDLING --- */
+  function setupChartInteractions(pad, plotW, plotH) {
+    const svg = document.getElementById('scurve-svg');
+    const tooltip = document.getElementById('chart-tooltip');
+    const wrapper = document.getElementById('svg-container');
+
+    svg.onmousemove = function(e) {
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const frac = (mouseX - (pad.left / 920) * rect.width) / ((plotW / 920) * rect.width);
+      const m = Math.max(0, Math.min(MAX_TIMELINE_MONTHS, frac * MAX_TIMELINE_MONTHS));
+
+      const pvE = interpolateArray(pvEarlyData, m);
+      const pvL = interpolateArray(pvLateData, m);
+
+      tooltip.style.display = 'block';
+      tooltip.style.left = `${Math.min(wrapper.clientWidth - 200, Math.max(10, e.clientX - rect.left + 15))}px`;
+      tooltip.style.top = `${Math.max(10, e.clientY - rect.top - 60)}px`;
+
+      tooltip.innerHTML = `
+        <div style="font-weight:700; color:#fff; border-bottom:1px solid var(--border-color); padding-bottom:4px; margin-bottom:6px;">
+          Month ${m.toFixed(1)}
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px; color:var(--pv-color);">
+          <span>PV (Early):</span> <strong>${formatMoney(pvE)}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px; color:var(--pv-late-color);">
+          <span>PV (Late):</span> <strong>${formatMoney(pvL)}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px; font-size:0.72rem; color:var(--text-dim); margin-top:4px;">
+          <span>Float Window:</span> <strong>${formatMoney(pvE - pvL)}</strong>
+        </div>
+      `;
+    };
+
+    svg.onmouseleave = function() {
+      tooltip.style.display = 'none';
+    };
+
+    svg.onclick = function(e) {
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const frac = (mouseX - (pad.left / 920) * rect.width) / ((plotW / 920) * rect.width);
+      const m = Math.round(Math.max(1, Math.min(MAX_TIMELINE_MONTHS, frac * MAX_TIMELINE_MONTHS)) * 2) / 2;
+      onMonthInput(m);
+    };
+  }
+
+  /* --- TABLE VIEW POPULATOR --- */
+  function updateDataTable(curData) {
+    const tbody = document.getElementById('table-body');
+    let html = '';
+
+    for (let m = 0; m <= MAX_TIMELINE_MONTHS; m++) {
+      const isDD = Math.abs(m - Math.round(curData.dd)) === 0 && Math.abs(m - curData.dd) < 0.5;
+      const pvE = pvEarlyData[m];
+      const pvL = pvLateData[m];
+
+      // Simulated values for table rows
+      let evDisplay = '—';
+      let acDisplay = '—';
+      let cvDisplay = '—';
+      let svDisplay = '—';
+      let cpiDisplay = '—';
+      let spiDisplay = '—';
+      let statusTag = '<span style="color:var(--text-dim)">Future</span>';
+
+      if (m <= curData.dd) {
+        const ratio = curData.dd > 0 ? (m / curData.dd) : 0;
+        const rowEV = curData.ev * Math.pow(ratio, 1.25);
+        const rowAC = curData.ac * Math.pow(ratio, 1.15);
+        const rowCV = rowEV - rowAC;
+        const rowSV = rowEV - pvE;
+        const rowCPI = rowAC > 0 ? (rowEV / rowAC) : 1.0;
+        const rowSPI = pvE > 0 ? (rowEV / pvE) : 1.0;
+
+        evDisplay = formatMoney(rowEV, false);
+        acDisplay = formatMoney(rowAC, false);
+        cvDisplay = `${rowCV >= 0 ? '+' : ''}${formatMoney(rowCV, false)}`;
+        svDisplay = `${rowSV >= 0 ? '+' : ''}${formatMoney(rowSV, false)}`;
+        cpiDisplay = rowCPI.toFixed(2);
+        spiDisplay = rowSPI.toFixed(2);
+
+        if (rowCPI >= 1.0 && rowSPI >= 1.0) {
+          statusTag = '<span class="text-safe">🟢 Optimal</span>';
+        } else if (rowCPI < 1.0 && rowSPI < 1.0) {
+          statusTag = '<span class="text-critical">🔴 Crisis</span>';
+        } else {
+          statusTag = '<span class="text-warning">🟡 Warning</span>';
+        }
+      }
+
+      html += `
+        <tr class="${isDD ? 'current-dd-row' : ''}">
+          <td style="font-weight:${isDD ? '700' : 'normal'}">
+            Month ${m} ${isDD ? '<span class="badge-tag" style="margin-left:4px; font-size:0.65rem;">Data Date</span>' : ''}
+          </td>
+          <td style="color:var(--pv-color);">${formatMoney(pvE, false)}</td>
+          <td style="color:var(--pv-late-color);">${formatMoney(pvL, false)}</td>
+          <td style="color:var(--ev-color); font-weight:${m <= curData.dd ? '700' : 'normal'}">${evDisplay}</td>
+          <td style="color:var(--ac-color); font-weight:${m <= curData.dd ? '700' : 'normal'}">${acDisplay}</td>
+          <td class="${cvDisplay.startsWith('+') ? 'text-safe' : (cvDisplay.startsWith('-') ? 'text-critical' : '')}">${cvDisplay}</td>
+          <td class="${svDisplay.startsWith('+') ? 'text-safe' : (svDisplay.startsWith('-') ? 'text-critical' : '')}">${svDisplay}</td>
+          <td>${cpiDisplay}</td>
+          <td>${spiDisplay}</td>
+          <td>${statusTag}</td>
+        </tr>
+      `;
+    }
+    tbody.innerHTML = html;
+  }
+
+  /* --- INPUT EVENT HANDLERS --- */
+  function onMonthInput(val) {
+    state.dataDate = parseFloat(val);
+    state.activeScenario = 'custom';
+    updateDashboard();
+  }
+
+  function stepMonth(delta) {
+    const next = Math.max(1, Math.min(14, state.dataDate + delta));
+    onMonthInput(next);
+  }
+
+  function onProgressInput(val) {
+    state.progressPct = parseFloat(val);
+    state.activeScenario = 'custom';
+    updateDashboard();
+  }
+
+  function stepProgress(delta) {
+    const next = Math.max(0, Math.min(100, state.progressPct + delta));
+    onProgressInput(next);
+  }
+
+  function onACInput(val) {
+    state.actualCost = parseFloat(val);
+    state.activeScenario = 'custom';
+    updateDashboard();
+  }
+
+  function stepAC(delta) {
+    const next = Math.max(0, Math.min(15, state.actualCost + delta));
+    onACInput(next);
+  }
+
+  function onEACMethodChange(val) {
+    state.eacMethod = val;
+    document.getElementById('disp-forecast-rule').textContent = 
+      val === 'typical' ? 'Typical CPI' : (val === 'atypical' ? 'Atypical Blip' : 'CPI × SPI Factor');
+    updateDashboard();
+  }
+
+  function setCurrency(curr) {
+    state.currency = curr;
+    document.getElementById('btn-inr').classList.toggle('active', curr === 'INR');
+    document.getElementById('btn-usd').classList.toggle('active', curr === 'USD');
+    updateDashboard();
+  }
+
+  function loadScenario(key, btnEl) {
+    const sc = scenarios[key];
+    if (!sc) return;
+    state.dataDate = sc.dataDate;
+    state.progressPct = sc.progressPct;
+    state.actualCost = sc.actualCost;
+    state.eacMethod = sc.eacMethod;
+    state.activeScenario = key;
+
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    const targetBtn = btnEl || (typeof event !== 'undefined' && event && event.currentTarget ? event.currentTarget : document.querySelector(`[data-scenario="${key}"]`));
+    if (targetBtn) targetBtn.classList.add('active');
+
+    const selectEl = document.getElementById('select-eac-method');
+    if (selectEl) selectEl.value = sc.eacMethod;
+    onEACMethodChange(sc.eacMethod);
+  }
+
+  function switchTab(tabId, btnEl) {
+    document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    const targetBtn = btnEl || (typeof event !== 'undefined' && event && event.currentTarget ? event.currentTarget : null);
+    if (targetBtn) targetBtn.classList.add('active');
+    const content = document.getElementById(`tab-${tabId}`);
+    if (content) content.classList.add('active');
+  }
+
+  /* --- INITIALIZATION --- */
+  window.addEventListener('DOMContentLoaded', () => {
+    updateDashboard();
+  });
+</script>
+
+</body>
+</html>
